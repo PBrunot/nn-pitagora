@@ -1,0 +1,22 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE
+.claude/
+.vscode/
+.idea/
+
+# Generated files
+media/
+*.pkl
+*.png
+*.html
+
+# OS
+.DS_Store
+Thumbs.db
