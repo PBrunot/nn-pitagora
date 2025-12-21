@@ -40,12 +40,12 @@ class EvolvingNNSurfaceSimple(ThreeDScene):
 
         # Add axes with different z-scale, optimized ranges
         axes = ThreeDAxes(
-            x_range=[0, 10 * xy_scale, 2 * xy_scale],
-            y_range=[0, 10 * xy_scale, 2 * xy_scale],
-            z_range=[0, 14 * z_scale, 3 * z_scale],  # Adjusted for better fit
+            x_range=[-5 * xy_scale, 5 * xy_scale, 2 * xy_scale],
+            y_range=[-5 * xy_scale, 5 * xy_scale, 2 * xy_scale],
+            z_range=[0, 7 * z_scale, 2 * z_scale],  # Adjusted for better fit (max ~7.07 at corners)
             x_length=10 * xy_scale,
             y_length=10 * xy_scale,
-            z_length=14 * z_scale
+            z_length=7 * z_scale
         )
 
         labels = axes.get_axis_labels(
@@ -62,9 +62,13 @@ class EvolvingNNSurfaceSimple(ThreeDScene):
         self.play(Create(axes), Write(labels), Write(title))
 
         # Create actual surface (blue wireframe) with amplified z
+        # Use the data ranges to ensure alignment with NN surface
+        a_min, a_max = a_range[0], a_range[-1]
+        b_min, b_max = b_range[0], b_range[-1]
+
         def actual_func(u, v):
-            a = u * 10
-            b = v * 10
+            a = a_min + u * (a_max - a_min)
+            b = b_min + v * (b_max - b_min)
             z = np.sqrt(a**2 + b**2)
             return np.array([a * xy_scale, b * xy_scale, z * z_scale])
 
@@ -73,11 +77,11 @@ class EvolvingNNSurfaceSimple(ThreeDScene):
             u_range=[0, 1],
             v_range=[0, 1],
             resolution=(30, 30),  # Higher resolution for smoother surface
-            fill_opacity=0.15,  # More transparent to see NN surface through it
-            stroke_width=0.5,  # Thinner stroke to not obscure view
-            stroke_color=BLUE,
-            fill_color=BLUE,
-            stroke_opacity=0.6
+            fill_opacity=1.0,  # Solid fill for target surface
+            stroke_width=0,  # No grid lines - smooth surface only
+            fill_color=BLUE_C,  # Rich blue fill
+            shade_in_3d=True,
+            checkerboard_colors=[BLUE_C,BLUE_C]
         )
 
         self.play(Create(actual_surface), run_time=2)
@@ -103,8 +107,9 @@ class EvolvingNNSurfaceSimple(ThreeDScene):
                     z = (1-fx)*(1-fy)*Z_data[y0,x0] + fx*(1-fy)*Z_data[y0,x1] + \
                         (1-fx)*fy*Z_data[y1,x0] + fx*fy*Z_data[y1,x1]
 
-                    a = u * 10
-                    b = v * 10
+                    # Use actual data range from a_r and b_r
+                    a = a_r[0] + u * (a_r[-1] - a_r[0])
+                    b = b_r[0] + v * (b_r[-1] - b_r[0])
                     return np.array([a * xy_scale, b * xy_scale, z * z_scl])
                 return surf_func
 
@@ -117,7 +122,7 @@ class EvolvingNNSurfaceSimple(ThreeDScene):
                 u_range=[0, 1],
                 v_range=[0, 1],
                 resolution=(30, 30),  # Higher resolution for smoother surface
-                fill_opacity=0.65,  # Slightly more opaque to stand out
+                fill_opacity=0.75,  # Slightly more opaque to stand out
                 stroke_width=0.8,  # Visible wireframe
                 stroke_color=surf_color,
                 fill_color=surf_color,

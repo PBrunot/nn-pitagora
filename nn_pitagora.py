@@ -13,16 +13,18 @@ np.random.seed(42)
 
 # Generate training data
 n_samples = 5000
-a_train = np.random.uniform(0, 100, n_samples)
-b_train = np.random.uniform(0, 100, n_samples)
+a_train = np.random.uniform(-5, 5, n_samples)
+b_train = np.random.uniform(-5, 5, n_samples)
 y_train = np.sqrt(a_train**2 + b_train**2)
 
 # Prepare input data (combine a and b into a single array)
 X_train = np.column_stack((a_train, b_train))
+NN_COUNT = 50
+ACTIVATION = 'tanh'
 
 # Build the neural network
 model = Sequential([
-    Dense(30, activation='relu', input_shape=(2,)),  # Hidden layer with 10 neurons
+    Dense(NN_COUNT, activation=ACTIVATION, input_shape=(2,)),  # Hidden layer with 10 neurons
     Dense(1, activation='linear')  # Output layer (linear for regression)
 ])
 
@@ -51,11 +53,11 @@ class SaveModelAtEpochs(Callback):
 
 # Train the model
 print("\nTraining the model...")
-epochs_to_plot = [1, 3, 10, 30, 50]
+epochs_to_plot = [1, 3, 5, 10, 20, 30, 40, 50, 75]
 save_callback = SaveModelAtEpochs(epochs_to_plot)
 
 history = model.fit(X_train, y_train,
-                    epochs=50,
+                    epochs=75,
                     batch_size=32,
                     validation_split=0.2,
                     verbose=1,
@@ -105,16 +107,18 @@ print("Testing the model on specific (a, b) couples:")
 print("="*60)
 
 test_cases = [
-    (1, 2),    # Should be sqrt(5) ≈ 2.236 (used in animation)
-    (3, 4),    # Should be 5
-    (5, 12),   # Should be 13
-    (50, 120),   # Should be 130
-    (1, 1),    # Should be sqrt(2) ≈ 1.414
-    (6, 8),    # Should be 10
-    (0, 5),    # Should be 5
-    (7, 0),    # Should be 7
-    (1, 0),    # Should be 1
-    (2.5, 6),  # Should be sqrt(42.25) ≈ 6.5
+    (1, 2),      # Should be sqrt(5) ≈ 2.236
+    (3, 4),      # Should be 5
+    (-3, 4),     # Should be 5
+    (3, -4),     # Should be 5
+    (-3, -4),    # Should be 5
+    (1, 1),      # Should be sqrt(2) ≈ 1.414
+    (-1, -1),    # Should be sqrt(2) ≈ 1.414
+    (0, 5),      # Should be 5
+    (5, 0),      # Should be 5
+    (-5, 0),     # Should be 5
+    (0, -5),     # Should be 5
+    (4.5, 4.5),  # Should be sqrt(40.5) ≈ 6.364
 ]
 
 for a, b in test_cases:
@@ -134,9 +138,9 @@ print("="*60)
 # 3D Visualization: Compare original function with NN predictions at different epochs
 print("\nGenerating 3D comparison plot for epochs 1, 10, 25, 50...")
 
-# Create a meshgrid for the interval [0, 10]
-a_range = np.linspace(0, 10, 50)  # Reduced resolution for better performance
-b_range = np.linspace(0, 10, 50)
+# Create a meshgrid for the interval [-5, 5]
+a_range = np.linspace(-5, 5, 50)  # Reduced resolution for better performance
+b_range = np.linspace(-5, 5, 50)
 A, B = np.meshgrid(a_range, b_range)
 
 # Calculate the actual function values
@@ -148,7 +152,7 @@ X_grid = np.column_stack((A.ravel(), B.ravel()))
 # Function to create a temporary model and get predictions
 def get_predictions_for_epoch(weights, X_input):
     temp_model = Sequential([
-        Dense(30, activation='relu', input_shape=(2,)),
+        Dense(NN_COUNT, activation=ACTIVATION, input_shape=(2,)),
         Dense(1, activation='linear')
     ])
     temp_model.build((None, 2))
@@ -227,12 +231,6 @@ fig.update_layout(
     legend=dict(x=0.7, y=0.9)
 )
 
-# Save as HTML
-fig.write_html('3d_comparison_epochs.html')
-print("\nInteractive 3D comparison plot saved as '3d_comparison_epochs.html'")
-print("Click legend items to toggle surfaces on/off!")
-fig.show()
-
 # Save epoch data for Manim animation
 print("\nSaving epoch data for Manim animation...")
 epoch_data = {
@@ -249,3 +247,7 @@ for epoch in epochs_to_plot:
 with open('epoch_surfaces.pkl', 'wb') as f:
     pickle.dump(epoch_data, f)
 print("Epoch surface data saved to 'epoch_surfaces.pkl' for Manim animation")
+
+# Save as HTML
+fig.write_html('3d_comparison_epochs.html')
+print("\nInteractive 3D comparison plot saved as '3d_comparison_epochs.html'")
