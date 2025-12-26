@@ -139,53 +139,133 @@ class SuperficieNNEvoluzioneSemplice(ThreeDScene):
         self.wait(2)  # Pausa più lunga per vedere approssimazione iniziale scadente
 
         for i in range(1, len(superfici)):
-            # Prima di transizione, evidenzia lo spazio tra le superfici in rosso
+            # Prima di transizione, crea volume 3D dello spazio di errore tra le superfici
             epoca_corrente = superfici[i-1][0]
             Z_corrente = dati['epochs'][epoca_corrente]
 
-            # Crea superficie dello spazio di errore (riempimento tra superficie_reale e superficie_corrente)
-            def crea_superficie_errore(Z_pred, Z_real, a_r, b_r, z_scl):
-                def funz_errore(u, v):
-                    # Interpolazione bilineare per Z_pred
-                    x_idx = u * (len(a_r) - 1)
-                    y_idx = v * (len(b_r) - 1)
+            # Crea gruppo per contenere tutte le superfici che formano il volume
+            volume_errore = VGroup()
 
-                    x0, x1 = int(x_idx), min(int(x_idx) + 1, len(a_r) - 1)
-                    y0, y1 = int(y_idx), min(int(y_idx) + 1, len(b_r) - 1)
+            # Funzione helper per interpolazione bilineare
+            def interpola_z(Z_data, u, v, a_r):
+                x_idx = u * (len(a_r) - 1)
+                y_idx = v * (len(a_r) - 1)
 
-                    fx, fy = x_idx - x0, y_idx - y0
+                x0, x1 = int(x_idx), min(int(x_idx) + 1, len(a_r) - 1)
+                y0, y1 = int(y_idx), min(int(y_idx) + 1, len(a_r) - 1)
 
-                    z_pred = (1-fx)*(1-fy)*Z_pred[y0,x0] + fx*(1-fy)*Z_pred[y0,x1] + \
-                            (1-fx)*fy*Z_pred[y1,x0] + fx*fy*Z_pred[y1,x1]
+                fx, fy = x_idx - x0, y_idx - y0
 
-                    z_real = (1-fx)*(1-fy)*Z_real[y0,x0] + fx*(1-fy)*Z_real[y0,x1] + \
-                            (1-fx)*fy*Z_real[y1,x0] + fx*fy*Z_real[y1,x1]
+                return (1-fx)*(1-fy)*Z_data[y0,x0] + fx*(1-fy)*Z_data[y0,x1] + \
+                       (1-fx)*fy*Z_data[y1,x0] + fx*fy*Z_data[y1,x1]
 
-                    # Usa il punto medio tra le due superfici
-                    z_medio = (z_pred + z_real) / 2
+            # Superficie superiore (quella reale o quella predetta, a seconda di quale è più alta)
+            def superficie_sup(u, v):
+                z_pred = interpola_z(Z_corrente, u, v, range_a)
+                z_real = interpola_z(Z_reale, u, v, range_a)
+                z_max = max(z_pred, z_real)
 
-                    a = a_r[0] + u * (a_r[-1] - a_r[0])
-                    b = b_r[0] + v * (b_r[-1] - b_r[0])
-                    return np.array([a * scala_xy, b * scala_xy, z_medio * z_scl])
-                return funz_errore
+                a = range_a[0] + u * (range_a[-1] - range_a[0])
+                b = range_b[0] + v * (range_b[-1] - range_b[0])
+                return np.array([a * scala_xy, b * scala_xy, z_max * scala_z])
 
-            superficie_errore = Surface(
-                crea_superficie_errore(Z_corrente, Z_reale, range_a, range_b, scala_z),
+            # Superficie inferiore
+            def superficie_inf(u, v):
+                z_pred = interpola_z(Z_corrente, u, v, range_a)
+                z_real = interpola_z(Z_reale, u, v, range_a)
+                z_min = min(z_pred, z_real)
+
+                a = range_a[0] + u * (range_a[-1] - range_a[0])
+                b = range_b[0] + v * (range_b[-1] - range_b[0])
+                return np.array([a * scala_xy, b * scala_xy, z_min * scala_z])
+
+            # Crea superfici superiore e inferiore
+            sup = Surface(
+                superficie_sup,
                 u_range=[0, 1],
                 v_range=[0, 1],
-                resolution=(30, 30),
-                fill_opacity=0.6,
+                resolution=(20, 20),
+                fill_opacity=0.5,
                 stroke_width=0,
                 fill_color=RED,
                 shade_in_3d=True
             )
 
-            # Mostra superficie errore con fade in
-            self.play(FadeIn(superficie_errore), run_time=1)
-            self.wait(1.5)
+            inf = Surface(
+                superficie_inf,
+                u_range=[0, 1],
+                v_range=[0, 1],
+                resolution=(20, 20),
+                fill_opacity=0.5,
+                stroke_width=0,
+                fill_color=RED,
+                shade_in_3d=True
+            )
 
-            # Rimuovi superficie errore prima del morphing
-            self.play(FadeOut(superficie_errore), run_time=0.5)
+            # Crea superfici laterali per chiudere il volume (4 lati)
+            n_punti = 20
+
+            # Lato 1: u=0 (bordo sinistro)
+            def lato1(u, v):
+                z_pred = interpola_z(Z_corrente, 0, u, range_a)
+                z_real = interpola_z(Z_reale, 0, u, range_a)
+                z = z_real + v * (z_pred - z_real)
+
+                a = range_a[0]
+                b = range_b[0] + u * (range_b[-1] - range_b[0])
+                return np.array([a * scala_xy, b * scala_xy, z * scala_z])
+
+            # Lato 2: u=1 (bordo destro)
+            def lato2(u, v):
+                z_pred = interpola_z(Z_corrente, 1, u, range_a)
+                z_real = interpola_z(Z_reale, 1, u, range_a)
+                z = z_real + v * (z_pred - z_real)
+
+                a = range_a[-1]
+                b = range_b[0] + u * (range_b[-1] - range_b[0])
+                return np.array([a * scala_xy, b * scala_xy, z * scala_z])
+
+            # Lato 3: v=0 (bordo anteriore)
+            def lato3(u, v):
+                z_pred = interpola_z(Z_corrente, u, 0, range_a)
+                z_real = interpola_z(Z_reale, u, 0, range_a)
+                z = z_real + v * (z_pred - z_real)
+
+                a = range_a[0] + u * (range_a[-1] - range_a[0])
+                b = range_b[0]
+                return np.array([a * scala_xy, b * scala_xy, z * scala_z])
+
+            # Lato 4: v=1 (bordo posteriore)
+            def lato4(u, v):
+                z_pred = interpola_z(Z_corrente, u, 1, range_a)
+                z_real = interpola_z(Z_reale, u, 1, range_a)
+                z = z_real + v * (z_pred - z_real)
+
+                a = range_a[0] + u * (range_a[-1] - range_a[0])
+                b = range_b[-1]
+                return np.array([a * scala_xy, b * scala_xy, z * scala_z])
+
+            for lato_func in [lato1, lato2, lato3, lato4]:
+                lato = Surface(
+                    lato_func,
+                    u_range=[0, 1],
+                    v_range=[0, 1],
+                    resolution=(n_punti, 10),
+                    fill_opacity=0.4,
+                    stroke_width=0,
+                    fill_color=RED,
+                    shade_in_3d=True
+                )
+                volume_errore.add(lato)
+
+            volume_errore.add(sup, inf)
+
+            # Mostra volume errore con fade in
+            self.play(FadeIn(volume_errore), run_time=1.5)
+            self.wait(2)
+
+            # Rimuovi volume errore prima del morphing
+            self.play(FadeOut(volume_errore), run_time=0.5)
 
             epoca, superficie_prossima = superfici[i]
             nuova_etichetta = Text(f"Epoca {epoca}", font_size=32, color=YELLOW).to_corner(UP + LEFT)
