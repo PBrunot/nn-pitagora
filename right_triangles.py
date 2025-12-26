@@ -42,7 +42,7 @@ class TriangoliRettangoli(Scene):
         etichetta_nn = Text("Rete Neurale", font_size=24)
         etichetta_nn.move_to(UP * 3.5)
         
-        etichetta_output = Text("Output NN", font_size=24)
+        etichetta_output = Text("Risultati", font_size=24)
         etichetta_output.move_to(RIGHT * 4.5 + UP * 3.5)
         
         # Anima tutto
@@ -68,13 +68,34 @@ class TriangoliRettangoli(Scene):
         for epoch in [1, 10, 75]:
             # Carica predizioni NN epoca 1
             ipotenuse_predette = self.ottieni_predizioni_nn(dati_triangoli, epoch)
-        
+
+            # Anima flusso dati attraverso NN per il primo triangolo
+            primo_triangolo = dati_triangoli[0]
+            a_primo, b_primo, _ = primo_triangolo
+            pred_c_primo = ipotenuse_predette[0]
+
+            # Carica modello per questa epoca
+            try:
+                modello_epoca = load_saved_model(epoch_number=epoch)
+            except:
+                modello_epoca = None
+
+            etichette_valori_nn = self.anima_flusso_dati_nn(
+                rete_neurale,
+                tutti_triangoli[0],
+                a_primo,
+                b_primo,
+                pred_c_primo,
+                modello_epoca
+            )
+            self.wait(1)
+
             # Crea triangoli di output con predizioni NN
             tutti_triangoli_output = VGroup()
             for i, ((a, b, c), pred_c) in enumerate(zip(dati_triangoli, ipotenuse_predette)):
                 gruppo_triangolo_output = self.crea_triangolo_rettangolo(a, b, pred_c, e_predizione=True)
                 tutti_triangoli_output.add(gruppo_triangolo_output)
-            
+
             # Organizza triangoli output nella zona destra
             tutti_triangoli_output.arrange_in_grid(rows=2, cols=2, buff=0.5)
             tutti_triangoli_output.move_to(RIGHT * 4.5)
@@ -83,6 +104,9 @@ class TriangoliRettangoli(Scene):
             for triangolo in tutti_triangoli_output:
                 self.play(Create(triangolo), run_time=1.5)
                 self.wait(0.5)
+
+            # Rimuovi etichette valori dalla rete neurale
+            self.play(FadeOut(etichette_valori_nn), run_time=0.5)
             
             self.wait(1)
             # Nascondi etichette triangoli input prima della sovrapposizione
@@ -285,7 +309,7 @@ class TriangoliRettangoli(Scene):
         output_neuron.move_to(centro + RIGHT * spaziatura_layer)
 
         # Etichetta output
-        etichetta_c = Text("c", font_size=20, color=ORANGE)
+        etichetta_c = Text("c", font_size=20, color=YELLOW)
         etichetta_c.next_to(output_neuron, RIGHT, buff=0.2)
 
         # Crea frecce (arrows) tra layer
@@ -322,13 +346,13 @@ class TriangoliRettangoli(Scene):
 
         # Raggruppa tutto
         rete_neurale = VGroup(
-            arrows,
             input_neurons,
-            hidden_neurons,
-            output_neuron,
             etichetta_a,
             etichetta_b,
+            hidden_neurons,
+            output_neuron,
             etichetta_c,
+            arrows,
             punti_sospensione
         )
 
@@ -409,6 +433,164 @@ class TriangoliRettangoli(Scene):
                 predizione_scadente = (a + b) * 0.7 + np.random.RandomState(42).random() * 2
                 predizioni.append(predizione_scadente)
             return predizioni
+
+    def anima_flusso_dati_nn(self, rete_neurale, triangolo_input, a_val, b_val, pred_c, modello):
+        """
+        Anima il flusso di dati attraverso la rete neurale.
+
+        Args:
+            rete_neurale: VGroup della rete neurale visualizzata
+            triangolo_input: Il triangolo di input da cui prendere i valori
+            a_val: Valore di a (cateto)
+            b_val: Valore di b (cateto)
+            pred_c: Valore predetto di c (ipotenusa)
+            modello: Modello Keras per estrarre i pesi
+
+        Returns:
+            VGroup contenente le etichette dei valori sulla rete neurale (da rimuovere dopo)
+        """
+        # Estrai componenti della rete neurale
+        arrows = rete_neurale[6]
+        input_neurons = rete_neurale[0]
+        hidden_neurons = rete_neurale[3]
+        output_neuron = rete_neurale[4]
+
+        # Ottieni le etichette a e b dal triangolo input
+        # Struttura triangolo: [triangolo, angolo_retto, etichetta_a, etichetta_b, etichetta_c]
+        etichetta_a_triangolo = triangolo_input[2]
+        etichetta_b_triangolo = triangolo_input[3]
+
+        # Crea copie delle etichette per l'animazione
+        etichetta_a_mobile = etichetta_a_triangolo.copy()
+        etichetta_b_mobile = etichetta_b_triangolo.copy()
+
+        # Crea etichette dei valori per i neuroni input
+        valore_a_neurone = Text(str(a_val), font_size=20, color=BLUE)
+        valore_a_neurone.next_to(input_neurons[0], UP, buff=0.15)
+
+        valore_b_neurone = Text(str(b_val), font_size=20, color=BLUE)
+        valore_b_neurone.next_to(input_neurons[1], UP, buff=0.15)
+
+        # Aggiungi le etichette mobili alla scena
+        self.add(etichetta_a_mobile, etichetta_b_mobile)
+
+        # Anima movimento di a e b verso i neuroni input
+        self.play(
+            Transform(etichetta_a_mobile, valore_a_neurone),
+            Transform(etichetta_b_mobile, valore_b_neurone),
+            run_time=0.5
+        )
+        self.wait(0.5)
+
+        # INTERMEDIATE STEP: Anima le frecce basandosi sui pesi del modello
+        if modello is not None:
+            # Estrai pesi e bias dal modello
+            weights = modello.get_weights()
+            W1 = weights[0]  # Pesi input -> hidden: shape (2, n_hidden)
+            b1 = weights[1]  # Bias hidden layer: shape (n_hidden,)
+            W2 = weights[2]  # Pesi hidden -> output: shape (n_hidden, 1)
+            b2 = weights[3]  # Bias output layer: shape (1,)
+
+            # Trova il peso massimo assoluto per normalizzazione larghezza
+            max_peso_assoluto = max(np.abs(W1).max(), np.abs(W2).max())
+            max_stroke = 5.0
+
+            # Trova bias massimo assoluto per normalizzazione colore
+            max_bias_assoluto = max(np.abs(b1).max(), abs(b2[0]) if len(b2) > 0 else 0)
+
+            # Numero di neuroni nascosti visualizzati
+            n_neuroni_visualizzati = len(hidden_neurons)
+            n_neuroni_totali = W1.shape[1]
+
+            # Calcola indici dei neuroni visualizzati
+            indici_visualizzati = np.linspace(0, n_neuroni_totali - 1, n_neuroni_visualizzati, dtype=int)
+
+            # Definisce colori per bias: DARK_GRAY per bias negativi, WHITE per bias positivi
+            def ottieni_colore_da_bias(bias_val, max_bias):
+                """Calcola colore basato sul valore del bias."""
+                if max_bias == 0:
+                    return GRAY
+                # Normalizza bias tra -1 e 1
+                bias_normalizzato = np.clip(bias_val / max_bias, -1, 1)
+                # Interpola tra DARK_GRAY (-1) e WHITE (+1) passando per GRAY (0)
+                if bias_normalizzato < 0:
+                    # Bias negativo: interpola da DARK_GRAY a GRAY
+                    return interpolate_color(DARK_GRAY, GRAY, (bias_normalizzato + 1))
+                else:
+                    # Bias positivo: interpola da GRAY a WHITE
+                    return interpolate_color(GRAY, WHITE, bias_normalizzato)
+
+            # Crea nuove frecce con larghezza basata sui pesi e colore basato sul bias
+            animazioni_frecce = []
+
+            # Input -> Hidden arrows (usano bias del layer hidden)
+            arrow_idx = 0
+            for i in range(2):  # 2 input neurons
+                for j, h_idx in enumerate(indici_visualizzati):
+                    peso = W1[i, h_idx]
+                    bias = b1[h_idx]
+
+                    peso_normalizzato = (abs(peso) / max_peso_assoluto) * max_stroke if max_peso_assoluto > 0 else 0.5
+                    colore = ottieni_colore_da_bias(bias, max_bias_assoluto)
+
+                    # Ottieni la freccia corrente
+                    freccia_corrente = arrows[arrow_idx]
+
+                    # Crea nuova freccia con larghezza e colore aggiornati
+                    nuova_freccia = Arrow(
+                        input_neurons[i].get_right(),
+                        hidden_neurons[j].get_left(),
+                        buff=0,
+                        stroke_width=peso_normalizzato,
+                        max_tip_length_to_length_ratio=0.01,
+                        color=colore,
+                        fill_opacity=0.8,
+                        tip_shape=StealthTip
+                    )
+
+                    animazioni_frecce.append(Transform(freccia_corrente, nuova_freccia))
+                    arrow_idx += 1
+
+            # Hidden -> Output arrows (usano bias del layer output)
+            bias_output = b2[0] if len(b2) > 0 else 0
+            colore_output = ottieni_colore_da_bias(bias_output, max_bias_assoluto)
+
+            for j, h_idx in enumerate(indici_visualizzati):
+                peso = W2[h_idx, 0]
+                peso_normalizzato = (abs(peso) / max_peso_assoluto) * max_stroke if max_peso_assoluto > 0 else 0.5
+
+                freccia_corrente = arrows[arrow_idx]
+
+                nuova_freccia = Arrow(
+                    hidden_neurons[j].get_right(),
+                    output_neuron.get_left(),
+                    buff=0,
+                    stroke_width=peso_normalizzato,
+                    max_tip_length_to_length_ratio=0.01,
+                    color=colore_output,
+                    fill_opacity=0.8,
+                    tip_shape=StealthTip
+                )
+
+                animazioni_frecce.append(Transform(freccia_corrente, nuova_freccia))
+                arrow_idx += 1
+
+            # Anima tutte le frecce contemporaneamente
+            self.play(*animazioni_frecce, run_time=1.5)
+            self.wait(1)
+
+        # Crea etichetta per il valore predetto al neurone output
+        valore_pred_neurone = Text(f"{pred_c:.2f}", font_size=20, color=YELLOW)
+        valore_pred_neurone.next_to(output_neuron, UP, buff=0.15)
+
+        # Anima l'apparizione della predizione
+        self.play(Write(valore_pred_neurone), run_time=1)
+        self.wait(0.5)
+
+        # Raggruppa tutte le etichette valori per poterle rimuovere dopo
+        etichette_valori = VGroup(etichetta_a_mobile, etichetta_b_mobile, valore_pred_neurone)
+
+        return etichette_valori
 
     def mostra_analisi_errore(self, triangoli_output, dati_triangoli, ipotenuse_predette):
         """

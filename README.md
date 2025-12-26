@@ -1,184 +1,184 @@
-# Neural Network Pythagorean Theorem Implementation
+# Implementazione del Teorema di Pitagora con Rete Neurale
 
-This project implements a feedforward neural network to learn the Pythagorean theorem: f(a,b) = √(a² + b²)
+Questo progetto implementa una rete neurale feedforward per apprendere il teorema di Pitagora: f(a,b) = √(a² + b²)
 
-Uses TensorFlow/Keras for training, Plotly for interactive 3D visualization, and Manim for professional animations showing the learning process.
+Utilizza TensorFlow/Keras per l'addestramento, Plotly per la visualizzazione 3D interattiva e Manim per animazioni professionali che mostrano il processo di apprendimento.
 
-## Architecture
-- **Input Layer**: 2 neurons (a, b)
-- **Hidden Layer**: Configurable neurons with ReLU activation (default: 30)
-- **Output Layer**: 1 neuron with linear activation
+## Architettura
+- **Strato di Input**: 2 neuroni (a, b)
+- **Strato Nascosto**: Neuroni configurabili con attivazione ReLU (default: 30)
+- **Strato di Output**: 1 neurone con attivazione lineare
 
-The network dynamically adapts - change the hidden layer size in `nn_pitagora.py` and the animations will automatically adjust.
+La rete si adatta dinamicamente - modificando la dimensione dello strato nascosto in `nn_pitagora.py`, le animazioni si adatteranno automaticamente.
 
-## Installation
+## Installazione
 
-### 1. Create Virtual Environment
+### 1. Creare l'Ambiente Virtuale
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+source .venv/bin/activate  # Su Windows: .venv\Scripts\activate
 ```
 
-### 2. Install Required Libraries
+### 2. Installare le Librerie Richieste
 ```bash
 pip install numpy matplotlib tensorflow plotly manim
 ```
 
-**Required packages:**
-- `numpy` - Numerical computing and data generation
-- `matplotlib` - Training loss visualization
-- `tensorflow` (includes `keras`) - Neural network training framework
-- `plotly` - Interactive 3D surface plots
-- `manim` - Mathematical animation engine (for video generation)
+**Pacchetti richiesti:**
+- `numpy` - Calcolo numerico e generazione dati
+- `matplotlib` - Visualizzazione della loss durante l'addestramento
+- `tensorflow` (include `keras`) - Framework per l'addestramento della rete neurale
+- `plotly` - Grafici 3D interattivi
+- `manim` - Motore di animazione matematica (per la generazione di video)
 
-**System dependencies for Manim:**
-- LaTeX distribution (TeX Live or MiKTeX)
+**Dipendenze di sistema per Manim:**
+- Distribuzione LaTeX (TeX Live o MiKTeX)
 - FFmpeg
 - Cairo
 
-On Ubuntu/Debian:
+Su Ubuntu/Debian:
 ```bash
 sudo apt-get install texlive texlive-latex-extra ffmpeg libcairo2-dev
 ```
 
-On macOS:
+Su macOS:
 ```bash
 brew install --cask mactex
 brew install ffmpeg cairo
 ```
 
-### 3. Verify Installation
+### 3. Verificare l'Installazione
 ```bash
-python -c "import numpy, matplotlib, keras, plotly, manim; print('All packages installed successfully!')"
+python -c "import numpy, matplotlib, keras, plotly, manim; print('Tutti i pacchetti installati con successo!')"
 ```
 
-## Files
+## File
 
 ### nn_pitagora.py
-Main training script that:
-- Generates training samples (configurable, default: 5,000)
-- Trains the neural network (configurable epochs, default: 75)
-- Saves complete models at specific epochs to `saved_models/` directory
-- Plots training/validation loss and MAE
-- Tests predictions on sample inputs
-- Saves weights to `model_weights.pkl` for animation
-- Generates epoch surface data for 3D visualizations
+Script principale di addestramento che:
+- Genera campioni di addestramento (configurabile, default: 5.000)
+- Addestra la rete neurale (epoche configurabili, default: 75)
+- Salva i modelli completi a epoche specifiche nella directory `saved_models/`
+- Traccia la loss di addestramento/validazione e MAE
+- Testa le predizioni su input di esempio
+- Salva i pesi in `model_weights.pkl` per le animazioni
+- Genera dati delle superfici per epoca per visualizzazioni 3D
 
-**Key functions:**
+**Funzioni chiave:**
 
-- `genera_dati_addestramento()`: Generates training data
-- `costruisci_modello()`: Creates neural network architecture
-- `addestra_modello()`: Trains and saves models at specific epochs
-- `load_saved_model()`: Loads a model from a specific epoch
-- `salva_pesi_modello()`: Exports weights in Manim-compatible format
+- `genera_dati_addestramento()`: Genera i dati di addestramento
+- `costruisci_modello()`: Crea l'architettura della rete neurale
+- `addestra_modello()`: Addestra e salva i modelli a epoche specifiche
+- `load_saved_model()`: Carica un modello da un'epoca specifica
+- `salva_pesi_modello()`: Esporta i pesi in formato compatibile con Manim
 
 ### animate_weights.py
-Manim animation script with three scenes:
-1. **NeuralNetworkWeights**: Visualizes the network structure with colored connections and weight values on each arrow
-2. **WeightHeatmap**: Shows heatmaps of the weight matrices
-3. **SampleCalculation**: Step-by-step calculation demonstration for input (1, 2)
+Script di animazione Manim con tre scene:
+1. **NeuralNetworkWeights**: Visualizza la struttura della rete con connessioni colorate e valori dei pesi su ogni freccia
+2. **WeightHeatmap**: Mostra mappe di calore delle matrici dei pesi
+3. **SampleCalculation**: Dimostrazione passo-passo del calcolo per l'input (1, 2)
 
 ### animate_surface.py
-Manim 3D animation showing the evolution of the NN's surface approximation through training epochs. Features smooth morphing transitions, rotating camera, and color gradient from red (epoch 1) to green (epoch 50).
+Animazione 3D Manim che mostra l'evoluzione dell'approssimazione della superficie della rete neurale attraverso le epoche di addestramento. Include transizioni fluide di morphing, camera rotante e gradiente di colore dal rosso (epoca 1) al verde (epoca 50).
 
 ### right_triangles.py
-Manim scene demonstrating Pythagorean theorem with neural network predictions:
+Scena Manim che dimostra il teorema di Pitagora con predizioni della rete neurale:
 
-- **TriangoliRettangoli**: Main scene showing:
-  - Left panel: 4 input right triangles with known Pythagorean triples (3-4-5, 5-12-13, 8-15-17, 7-24-25)
-  - Center panel: Animated feed-forward neural network visualization with 2 inputs, N hidden neurons, and 1 output
-  - Right panel: Output triangles with NN predictions overlaid on input triangles
-  - Shows prediction accuracy across epochs (1, 10, 75) with error analysis
-  - Network visualization automatically extracts architecture from saved models
-  - Arrows with optimized appearance (thin lines, small tips, touching neurons)
+- **TriangoliRettangoli**: Scena principale che mostra:
+  - Pannello sinistro: 4 triangoli rettangoli di input con triple pitagoriche note (3-4-5, 5-12-13, 8-15-17, 7-24-25)
+  - Pannello centrale: Visualizzazione animata della rete neurale feed-forward con 2 input, N neuroni nascosti e 1 output
+  - Pannello destro: Triangoli di output con predizioni della rete neurale sovrapposti ai triangoli di input
+  - Mostra l'accuratezza delle predizioni attraverso le epoche (1, 10, 75) con analisi degli errori
+  - La visualizzazione della rete estrae automaticamente l'architettura dai modelli salvati
+  - Frecce con aspetto ottimizzato (linee sottili, punte piccole, neuroni che si toccano)
 
-## Usage
+## Utilizzo
 
-### 1. Train the Model
+### 1. Addestrare il Modello
 ```bash
 python nn_pitagora.py
 ```
 
-This will:
-- Train the neural network
-- Save `training_loss.png` with loss curves
-- Save `model_weights.pkl` for animations
-- Display test predictions
+Questo:
+- Addestra la rete neurale
+- Salva `training_loss.png` con le curve di loss
+- Salva `model_weights.pkl` per le animazioni
+- Visualizza le predizioni di test
 
-### 2. Generate Animations (requires Manim)
+### 2. Generare le Animazioni (richiede Manim)
 
-Install Manim if needed:
+Installare Manim se necessario:
 ```bash
 pip install manim
 ```
 
-Render the network visualization:
+Renderizzare la visualizzazione della rete:
 ```bash
 manim -pql animate_weights.py NeuralNetworkWeights
 ```
 
-Render the weight heatmap:
+Renderizzare la mappa di calore dei pesi:
 ```bash
 manim -pql animate_weights.py WeightHeatmap
 ```
 
-Render the sample calculation for (1, 2):
+Renderizzare il calcolo di esempio per (1, 2):
 ```bash
 manim -pql animate_weights.py SampleCalculation
 ```
 
-Render all scenes at once:
+Renderizzare tutte le scene contemporaneamente:
 ```bash
 manim -pql animate_weights.py NeuralNetworkWeights WeightHeatmap SampleCalculation
 ```
 
-Render the right triangles scene:
+Renderizzare la scena dei triangoli rettangoli:
 ```bash
 manim -pql right_triangles.py TriangoliRettangoli
 ```
 
-Quality options:
-- `-ql`: Low quality (480p) - fast
-- `-qm`: Medium quality (720p)
-- `-qh`: High quality (1080p)
-- `-qk`: 4K quality
-- `-p`: Preview after rendering
+Opzioni di qualità:
+- `-ql`: Bassa qualità (480p) - veloce
+- `-qm`: Media qualità (720p)
+- `-qh`: Alta qualità (1080p)
+- `-qk`: Qualità 4K
+- `-p`: Anteprima dopo il rendering
 
-## Expected Results
+## Risultati Attesi
 
-The model should achieve very low error (< 1%) on the Pythagorean theorem prediction after training.
+Il modello dovrebbe raggiungere un errore molto basso (< 1%) nella predizione del teorema di Pitagora dopo l'addestramento.
 
-Example predictions:
+Esempi di predizioni:
 - f(3, 4) ≈ 5.0
 - f(5, 12) ≈ 13.0
 - f(6, 8) ≈ 10.0
 
-## Visualization Details
+## Dettagli delle Visualizzazioni
 
-### Network Animation
-- **Red connections**: Positive weights
-- **Blue connections**: Negative weights
-- **Line thickness**: Weight magnitude
-- **Weight values**: Displayed on each connection arrow
-- Automatically shows all neurons if ≤15, otherwise shows a subset
-- Dynamically adapts to any network size
+### Animazione della Rete
+- **Connessioni rosse**: Pesi positivi
+- **Connessioni blu**: Pesi negativi
+- **Spessore della linea**: Magnitudine del peso
+- **Valori dei pesi**: Visualizzati su ogni freccia di connessione
+- Mostra automaticamente tutti i neuroni se ≤15, altrimenti mostra un sottoinsieme
+- Si adatta dinamicamente a qualsiasi dimensione della rete
 
-### Weight Heatmap
-- **Blue**: Minimum weight values
-- **Red**: Maximum weight values
-- W1: Input→Hidden layer (2×N matrix)
-- W2: Hidden→Output layer (N×1 matrix shown in grid layout)
-- Automatically scales grid layout based on network size
+### Mappa di Calore dei Pesi
+- **Blu**: Valori minimi dei pesi
+- **Rosso**: Valori massimi dei pesi
+- W1: Strato Input→Nascosto (matrice 2×N)
+- W2: Strato Nascosto→Output (matrice N×1 mostrata in layout a griglia)
+- Scala automaticamente il layout della griglia in base alla dimensione della rete
 
-### Sample Calculation
-- Demonstrates complete forward pass for input (1, 2)
-- **Step 1**: Shows input vector [1, 2]
-- **Step 2**: Calculates hidden layer activations
-  - Shows weighted sum calculation for first 3 neurons
-  - Applies ReLU activation function
-  - Color-coded: GREEN for active neurons, RED for suppressed
-- **Step 3**: Calculates final output
-  - Shows weighted sum of hidden activations
-  - Displays final prediction
-- **Comparison**: Shows predicted vs actual value with error percentage
-- Expected output: √5 ≈ 2.236
+### Calcolo di Esempio
+- Dimostra il passaggio in avanti completo per l'input (1, 2)
+- **Passo 1**: Mostra il vettore di input [1, 2]
+- **Passo 2**: Calcola le attivazioni dello strato nascosto
+  - Mostra il calcolo della somma pesata per i primi 3 neuroni
+  - Applica la funzione di attivazione ReLU
+  - Codificato a colori: VERDE per neuroni attivi, ROSSO per neuroni soppressi
+- **Passo 3**: Calcola l'output finale
+  - Mostra la somma pesata delle attivazioni nascoste
+  - Visualizza la predizione finale
+- **Confronto**: Mostra il valore predetto vs il valore reale con percentuale di errore
+- Output atteso: √5 ≈ 2.236

@@ -483,7 +483,7 @@ def salva_grafico_interattivo(fig, nome_file="confronto_3d_epoche.html"):
 def principale():
     """Funzione principale per orchestrare l'intero flusso di lavoro della rete neurale."""
     # Configurazione
-    unita_nascoste = 20
+    unita_nascoste = 15
     attivazione = "relu"
     tasso_apprendimento = 0.001
     epoche = 75
