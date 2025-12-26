@@ -148,8 +148,8 @@ class SuperficieNNEvoluzioneSemplice(ThreeDScene):
 
             # Limiti della griglia degli assi (solo primo quadrante positivo)
             # Gli assi vanno da -5 a 5, ma vogliamo solo la parte con a,b >= 0
-            grid_a_min, grid_a_max = 0, 5
-            grid_b_min, grid_b_max = 0, 5
+            grid_a_min, grid_a_max = -5, 5
+            grid_b_min, grid_b_max = -5, 5
 
             # Funzione helper per interpolazione bilineare
             def interpola_z(Z_data, u, v, a_r, b_r):
@@ -198,7 +198,7 @@ class SuperficieNNEvoluzioneSemplice(ThreeDScene):
                 u_range=[0, 1],
                 v_range=[0, 1],
                 resolution=(20, 20),
-                fill_opacity=0.5,
+                fill_opacity=0.9,
                 stroke_width=0,
                 fill_color=RED,
                 shade_in_3d=True
@@ -209,7 +209,7 @@ class SuperficieNNEvoluzioneSemplice(ThreeDScene):
                 u_range=[0, 1],
                 v_range=[0, 1],
                 resolution=(20, 20),
-                fill_opacity=0.5,
+                fill_opacity=0.9,
                 stroke_width=0,
                 fill_color=RED,
                 shade_in_3d=True
