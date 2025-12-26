@@ -146,13 +146,26 @@ class SuperficieNNEvoluzioneSemplice(ThreeDScene):
             # Crea gruppo per contenere tutte le superfici che formano il volume
             volume_errore = VGroup()
 
+            # Limiti della griglia degli assi (solo primo quadrante positivo)
+            # Gli assi vanno da -5 a 5, ma vogliamo solo la parte con a,b >= 0
+            grid_a_min, grid_a_max = 0, 5
+            grid_b_min, grid_b_max = 0, 5
+
             # Funzione helper per interpolazione bilineare
-            def interpola_z(Z_data, u, v, a_r):
-                x_idx = u * (len(a_r) - 1)
-                y_idx = v * (len(a_r) - 1)
+            def interpola_z(Z_data, u, v, a_r, b_r):
+                # Mappa u,v dai limiti della griglia ai limiti dei dati
+                a = grid_a_min + u * (grid_a_max - grid_a_min)
+                b = grid_b_min + v * (grid_b_max - grid_b_min)
+
+                # Trova indici nei dati
+                u_data = (a - a_r[0]) / (a_r[-1] - a_r[0])
+                v_data = (b - b_r[0]) / (b_r[-1] - b_r[0])
+
+                x_idx = u_data * (len(a_r) - 1)
+                y_idx = v_data * (len(b_r) - 1)
 
                 x0, x1 = int(x_idx), min(int(x_idx) + 1, len(a_r) - 1)
-                y0, y1 = int(y_idx), min(int(y_idx) + 1, len(a_r) - 1)
+                y0, y1 = int(y_idx), min(int(y_idx) + 1, len(b_r) - 1)
 
                 fx, fy = x_idx - x0, y_idx - y0
 
@@ -161,22 +174,22 @@ class SuperficieNNEvoluzioneSemplice(ThreeDScene):
 
             # Superficie superiore (quella reale o quella predetta, a seconda di quale è più alta)
             def superficie_sup(u, v):
-                z_pred = interpola_z(Z_corrente, u, v, range_a)
-                z_real = interpola_z(Z_reale, u, v, range_a)
+                z_pred = interpola_z(Z_corrente, u, v, range_a, range_b)
+                z_real = interpola_z(Z_reale, u, v, range_a, range_b)
                 z_max = max(z_pred, z_real)
 
-                a = range_a[0] + u * (range_a[-1] - range_a[0])
-                b = range_b[0] + v * (range_b[-1] - range_b[0])
+                a = grid_a_min + u * (grid_a_max - grid_a_min)
+                b = grid_b_min + v * (grid_b_max - grid_b_min)
                 return np.array([a * scala_xy, b * scala_xy, z_max * scala_z])
 
             # Superficie inferiore
             def superficie_inf(u, v):
-                z_pred = interpola_z(Z_corrente, u, v, range_a)
-                z_real = interpola_z(Z_reale, u, v, range_a)
+                z_pred = interpola_z(Z_corrente, u, v, range_a, range_b)
+                z_real = interpola_z(Z_reale, u, v, range_a, range_b)
                 z_min = min(z_pred, z_real)
 
-                a = range_a[0] + u * (range_a[-1] - range_a[0])
-                b = range_b[0] + v * (range_b[-1] - range_b[0])
+                a = grid_a_min + u * (grid_a_max - grid_a_min)
+                b = grid_b_min + v * (grid_b_max - grid_b_min)
                 return np.array([a * scala_xy, b * scala_xy, z_min * scala_z])
 
             # Crea superfici superiore e inferiore
@@ -205,44 +218,44 @@ class SuperficieNNEvoluzioneSemplice(ThreeDScene):
             # Crea superfici laterali per chiudere il volume (4 lati)
             n_punti = 20
 
-            # Lato 1: u=0 (bordo sinistro)
+            # Lato 1: u=0 (bordo sinistro a=0)
             def lato1(u, v):
-                z_pred = interpola_z(Z_corrente, 0, u, range_a)
-                z_real = interpola_z(Z_reale, 0, u, range_a)
+                z_pred = interpola_z(Z_corrente, 0, u, range_a, range_b)
+                z_real = interpola_z(Z_reale, 0, u, range_a, range_b)
                 z = z_real + v * (z_pred - z_real)
 
-                a = range_a[0]
-                b = range_b[0] + u * (range_b[-1] - range_b[0])
+                a = grid_a_min
+                b = grid_b_min + u * (grid_b_max - grid_b_min)
                 return np.array([a * scala_xy, b * scala_xy, z * scala_z])
 
-            # Lato 2: u=1 (bordo destro)
+            # Lato 2: u=1 (bordo destro a=5)
             def lato2(u, v):
-                z_pred = interpola_z(Z_corrente, 1, u, range_a)
-                z_real = interpola_z(Z_reale, 1, u, range_a)
+                z_pred = interpola_z(Z_corrente, 1, u, range_a, range_b)
+                z_real = interpola_z(Z_reale, 1, u, range_a, range_b)
                 z = z_real + v * (z_pred - z_real)
 
-                a = range_a[-1]
-                b = range_b[0] + u * (range_b[-1] - range_b[0])
+                a = grid_a_max
+                b = grid_b_min + u * (grid_b_max - grid_b_min)
                 return np.array([a * scala_xy, b * scala_xy, z * scala_z])
 
-            # Lato 3: v=0 (bordo anteriore)
+            # Lato 3: v=0 (bordo anteriore b=0)
             def lato3(u, v):
-                z_pred = interpola_z(Z_corrente, u, 0, range_a)
-                z_real = interpola_z(Z_reale, u, 0, range_a)
+                z_pred = interpola_z(Z_corrente, u, 0, range_a, range_b)
+                z_real = interpola_z(Z_reale, u, 0, range_a, range_b)
                 z = z_real + v * (z_pred - z_real)
 
-                a = range_a[0] + u * (range_a[-1] - range_a[0])
-                b = range_b[0]
+                a = grid_a_min + u * (grid_a_max - grid_a_min)
+                b = grid_b_min
                 return np.array([a * scala_xy, b * scala_xy, z * scala_z])
 
-            # Lato 4: v=1 (bordo posteriore)
+            # Lato 4: v=1 (bordo posteriore b=5)
             def lato4(u, v):
-                z_pred = interpola_z(Z_corrente, u, 1, range_a)
-                z_real = interpola_z(Z_reale, u, 1, range_a)
+                z_pred = interpola_z(Z_corrente, u, 1, range_a, range_b)
+                z_real = interpola_z(Z_reale, u, 1, range_a, range_b)
                 z = z_real + v * (z_pred - z_real)
 
-                a = range_a[0] + u * (range_a[-1] - range_a[0])
-                b = range_b[-1]
+                a = grid_a_min + u * (grid_a_max - grid_a_min)
+                b = grid_b_max
                 return np.array([a * scala_xy, b * scala_xy, z * scala_z])
 
             for lato_func in [lato1, lato2, lato3, lato4]:
@@ -251,7 +264,7 @@ class SuperficieNNEvoluzioneSemplice(ThreeDScene):
                     u_range=[0, 1],
                     v_range=[0, 1],
                     resolution=(n_punti, 10),
-                    fill_opacity=0.4,
+                    fill_opacity=0.90,
                     stroke_width=0,
                     fill_color=RED,
                     shade_in_3d=True
