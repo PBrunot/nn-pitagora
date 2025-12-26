@@ -7,7 +7,7 @@ class PesiReteNeurale(Scene):
     def construct(self):
         # Carica pesi modello addestrato
         try:
-            with open('pesi_modello.pkl', 'rb') as f:
+            with open('model_weights.pkl', 'rb') as f:
                 dati_pesi = pickle.load(f)
             W1 = dati_pesi['W1']  # Forma: (2, 100)
             b1 = dati_pesi['b1']  # Forma: (100,)
@@ -92,7 +92,7 @@ class PesiReteNeurale(Scene):
                 linea = Line(
                     neuroni_input[i][0].get_center(),
                     neuroni_nascosti[j].get_center(),
-                    stroke_width=abs(peso) * 2,
+                    stroke_width=abs(peso) * 5,
                     color=colore,
                     stroke_opacity=0.6
                 )
@@ -120,7 +120,7 @@ class PesiReteNeurale(Scene):
             linea = Line(
                 neuroni_nascosti[j].get_center(),
                 neurone_output.get_center(),
-                stroke_width=abs(peso) * 2,
+                stroke_width=abs(peso) * 5,
                 color=colore,
                 stroke_opacity=0.6
             )
@@ -273,10 +273,10 @@ class HeatmapPesi(Scene):
         colonne_griglia = int(np.ceil(np.sqrt(n_neuroni_nascosti)))
         righe_griglia = int(np.ceil(n_neuroni_nascosti / colonne_griglia))
 
-        cell_width2 = min(0.1, 2.5 / grid_cols)
-        cell_height2 = min(0.1, 2.5 / grid_rows)
+        cell_width2 = min(0.1, 2.5 / colonne_griglia)
+        cell_height2 = min(0.1, 2.5 / righe_griglia)
 
-        for i in range(n_hidden_neurons):
+        for i in range(n_neuroni_nascosti):
             color_value = W2_norm[i, 0]
             color = interpolate_color(BLUE, RED, color_value)
 
@@ -288,17 +288,17 @@ class HeatmapPesi(Scene):
                 stroke_width=0.3
             )
             # Arrange in grid
-            row = i // grid_cols
-            col = i % grid_cols
+            row = i // colonne_griglia
+            col = i % righe_griglia
             rect.move_to(
                 RIGHT * 3 +
-                RIGHT * (col * cell_width2 - grid_cols * cell_width2 / 2) +
-                UP * (grid_rows * cell_height2 / 2 - row * cell_height2)
+                RIGHT * (col * cell_width2 - colonne_griglia * cell_width2 / 2) +
+                UP * (righe_griglia * cell_height2 / 2 - row * cell_height2)
             )
-            w2_grid.add(rect)
+            griglia_w2.add(rect)
 
-        self.play(Write(w2_title))
-        self.play(FadeIn(w2_grid), run_time=1.5)
+        self.play(Write(titolo_w2))
+        self.play(FadeIn(griglia_w2), run_time=1.5)
 
         # Add color scale legend
         legend_title = Text("Color Scale:", font_size=20)
@@ -443,12 +443,12 @@ class CalcoloEsempio(Scene):
             equation_str = f"y = {' + '.join(sum_terms)} + {b2[0]:.2f}"
 
         equation = Text(equation_str, font_size=16)
-        equation.next_to(output_text, DOWN, buff=0.3)
+        equation.next_to(testo_output, DOWN, buff=0.3)
 
         result_text = Text(f"y = {prediction:.4f}", font_size=24, color=YELLOW)
         result_text.next_to(equation, DOWN, buff=0.5)
 
-        self.play(Write(output_text))
+        self.play(Write(testo_output))
         self.play(Write(equation))
         self.wait(1)
         self.play(Write(result_text))
