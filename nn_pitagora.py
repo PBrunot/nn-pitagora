@@ -164,6 +164,36 @@ def save_model_weights(model, filename="model_weights.pkl"):
     print(f"\nModel weights saved to '{filename}'")
 
 
+def crea_modello_epoca_zero(hidden_units=50, activation='relu', learning_rate=0.001, models_directory="saved_models"):
+    """Crea e salva un modello con pesi casuali per l'epoca 0 (prima dell'addestramento).
+    
+    Args:
+        hidden_units (int): Numero di unità nascoste
+        activation (str): Funzione di attivazione
+        learning_rate (float): Tasso di apprendimento
+        models_directory (str): Directory dove salvare il modello
+        
+    Returns:
+        keras.Model: Modello con pesi casuali
+    """
+    # Crea directory se non esiste
+    os.makedirs(models_directory, exist_ok=True)
+    
+    # Costruisci modello con stessi parametri del training
+    model = costruisci_modello(
+        unita_nascoste=hidden_units,
+        attivazione=activation,
+        tasso_apprendimento=learning_rate
+    )
+    
+    # Salva modello con pesi casuali
+    model_path = os.path.join(models_directory, "model_epoch_000.keras")
+    model.save(model_path)
+    print(f"Modello epoca 0 (pesi casuali) salvato in '{model_path}'")
+    
+    return model
+
+
 def load_saved_model(epoch_number, models_directory="saved_models"):
     """Carica un modello salvato da una specifica epoca.
     
@@ -483,7 +513,7 @@ def salva_grafico_interattivo(fig, nome_file="confronto_3d_epoche.html"):
 def principale():
     """Funzione principale per orchestrare l'intero flusso di lavoro della rete neurale."""
     # Configurazione
-    unita_nascoste = 15
+    unita_nascoste = 10
     attivazione = "relu"
     tasso_apprendimento = 0.001
     epoche = 75

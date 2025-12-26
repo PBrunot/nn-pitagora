@@ -3,7 +3,7 @@ import numpy as np
 import pickle
 from keras.models import Sequential
 from keras.layers import Dense
-from nn_pitagora import load_saved_model
+from nn_pitagora import load_saved_model, crea_modello_epoca_zero
 
 
 class TriangoliRettangoli(Scene):
@@ -13,6 +13,13 @@ class TriangoliRettangoli(Scene):
     """
 
     def construct(self):
+        # Crea modello epoca 0 con pesi casuali se non esiste
+        try:
+            load_saved_model(epoch_number=0)
+        except:
+            print("Creando modello epoca 0 con pesi casuali...")
+            crea_modello_epoca_zero()
+            
         # Definisce set di terne pitagoriche (a, b, c)
         dati_triangoli = [(3, 4, 5), (5, 12, 13), (8, 15, 17), (7, 24, 25)]
 
@@ -44,7 +51,7 @@ class TriangoliRettangoli(Scene):
 
         # Carica un modello per ottenere l'architettura
         try:
-            modello_esempio = load_saved_model(epoch_number=1)
+            modello_esempio = load_saved_model(epoch_number=0)
         except:
             modello_esempio = None
 
@@ -59,14 +66,14 @@ class TriangoliRettangoli(Scene):
             self.wait(0.5)
 
         # Crea indicatore epoca persistente
-        testo_epoca = Text("Epoca 1", font_size=28, color=YELLOW)
+        testo_epoca = Text("Epoca 0", font_size=28, color=YELLOW)
         testo_epoca.next_to(rete_neurale, DOWN, buff=0.5)
         self.play(Write(testo_epoca), run_time=0.5)
         self.wait(0.5)
 
-        for epoch in [1, 10, 75]:
+        for epoch in [0, 1, 10, 75]:
             # Aggiorna indicatore epoca
-            if epoch != 1:  # Non aggiornare per la prima epoca (già mostrata)
+            if epoch != 0:  # Non aggiornare per la prima epoca (già mostrata)
                 nuovo_testo_epoca = Text(f"Epoca {epoch}", font_size=28, color=YELLOW)
                 nuovo_testo_epoca.next_to(rete_neurale, DOWN, buff=0.5)
                 self.play(Transform(testo_epoca, nuovo_testo_epoca), run_time=0.5)
@@ -196,6 +203,23 @@ class TriangoliRettangoli(Scene):
 
             self.play(*animazioni_ricomparsa, run_time=0.5)
             self.wait(1)
+        
+        # Fase finale: mostra matrici di pesi e bias del modello finale addestrato
+        try:
+            modello_finale = load_saved_model(epoch_number=75)
+            self.mostra_matrici_pesi_finali(modello_finale)
+        except Exception as e:
+            print(f"Errore nel caricamento del modello finale per mostrare i pesi: {e}")
+            # Mostra messaggio finale senza matrici
+            messaggio_finale = Text(
+                "Addestramento Completato!\nIl modello ha imparato il Teorema di Pitagora",
+                font_size=32,
+                color=GREEN
+            )
+            messaggio_finale.move_to(ORIGIN)
+            self.play(*[FadeOut(mob) for mob in self.mobjects], run_time=1)
+            self.play(Write(messaggio_finale), run_time=2)
+            self.wait(3)
 
     def crea_triangolo_rettangolo(self, a, b, c, e_predizione=False):
         """
@@ -427,39 +451,40 @@ class TriangoliRettangoli(Scene):
 
     def ottieni_predizioni_nn(self, dati_triangoli, epoch=1):
         """
-        Ottieni predizioni NN per ipotenusa dal modello epoca 1.
+        Ottieni predizioni NN per ipotenusa dal modello di una data epoca.
 
         Args:
             dati_triangoli: Lista di tuple (a, b, c)
+            epoch: Numero dell'epoca del modello da usare
 
         Returns:
-            Lista di valori ipotenusa predetti da NN epoca 1
+            Lista di valori ipotenusa predetti da NN per l'epoca specificata
         """
         try:
-            # Carica il modello salvato dall'epoca 1
-            modello_epoca_1 = load_saved_model(epoch_number=epoch)
+            # Carica il modello salvato per l'epoca specificata
+            modello_epoca = load_saved_model(epoch_number=epoch)
 
             # Crea input test per i nostri triangoli
             input_test = np.array([[a, b] for a, b, c in dati_triangoli])
 
-            # Ottieni predizioni reali dal modello epoca 1
-            predizioni = modello_epoca_1.predict(input_test, verbose=0)
+            # Ottieni predizioni reali dal modello
+            predizioni = modello_epoca.predict(input_test, verbose=0)
 
             # Converte da array 2D a lista 1D
             predizioni_lista = [float(pred[0]) for pred in predizioni]
 
-            print(f"Predizioni NN epoca 1: {predizioni_lista}")
+            print(f"Predizioni NN epoca {epoch}: {predizioni_lista}")
             return predizioni_lista
 
         except FileNotFoundError as e:
             print(
-                f"Avvertimento: Modello epoca 1 non trovato ({e}), uso approssimazione"
+                f"Avvertimento: Modello epoca {epoch} non trovato ({e}), uso approssimazione"
             )
             # Fallback: ritorna approssimazioni grossolane per dimostrazione
             return [abs(a + b - c / 2) for a, b, c in dati_triangoli]
         except Exception as e:
-            print(f"Errore nel caricamento modello epoca 1: {e}")
-            # Fallback: simula predizioni scarse epoca 1 (casuale ma deterministica)
+            print(f"Errore nel caricamento modello epoca {epoch}: {e}")
+            # Fallback: simula predizioni scarse (casuale ma deterministica)
             predizioni = []
             for a, b, c in dati_triangoli:
                 predizione_scadente = (a + b) * 0.7 + np.random.RandomState(
@@ -703,3 +728,154 @@ class TriangoliRettangoli(Scene):
 
         # Ritorna il testo errore medio per poterlo rimuovere dopo
         return testo_errore_medio
+
+    def mostra_matrici_pesi_finali(self, modello_finale):
+        """
+        Mostra le matrici di pesi e bias finali del modello addestrato in formato migliorato.
+        
+        Args:
+            modello_finale: Modello Keras addestrato della epoch finale
+            
+        Returns:
+            VGroup contenente tutte le matrici visualizzate
+        """
+        if modello_finale is None:
+            print("Nessun modello finale disponibile per mostrare i pesi")
+            return VGroup()
+            
+        # Estrai pesi e bias dal modello
+        weights = modello_finale.get_weights()
+        W1 = weights[0]  # Pesi input -> hidden: shape (2, n_hidden)
+        b1 = weights[1]  # Bias hidden layer: shape (n_hidden,)
+        W2 = weights[2]  # Pesi hidden -> output: shape (n_hidden, 1)
+        b2 = weights[3]  # Bias output layer: shape (1,)
+        
+        # Nascondi tutti gli elementi correnti
+        self.play(*[FadeOut(mob) for mob in self.mobjects], run_time=1)
+        
+        # Crea titolo più prominente
+        titolo = Text("Matrici di Pesi e Bias del Modello Addestrato", 
+                     font_size=40, color=YELLOW)
+        titolo.to_edge(UP, buff=0.3)
+        self.play(Write(titolo), run_time=1.5)
+        
+        # SEZIONE 1: W1 Matrix (Input → Hidden) - Mostra 20 elementi (2x10)
+        etichetta_w1 = Text("Pesi Input → Hidden Layer:", 
+                           font_size=28, color=BLUE)
+        etichetta_w1.move_to(UP * 2.2)
+        
+        # Mostra almeno 10 elementi per W1 (2 x 10) per migliore spacing
+        n_cols_mostrare_w1 = min(10, W1.shape[1])
+        elementi_w1 = []
+        for i in range(W1.shape[0]):  # 2 righe
+            riga = []
+            for j in range(n_cols_mostrare_w1):
+                valore = f"{W1[i,j]:.2f}"
+                riga.append(valore)
+            if W1.shape[1] > n_cols_mostrare_w1:
+                riga.append("⋯")
+            elementi_w1.append(riga)
+        
+        matrice_w1 = Matrix(
+            elementi_w1, 
+            h_buff=0.6, 
+            v_buff=0.4,
+            element_to_mobject_config={"font_size": 20}
+        )
+        matrice_w1.set_color(BLUE)
+        matrice_w1.next_to(etichetta_w1, DOWN, buff=0.2)
+        
+        desc_w1 = Text(f"W₁ shape: {W1.shape[0]} × {W1.shape[1]} (mostrando {n_cols_mostrare_w1} di {W1.shape[1]} colonne)", 
+                      font_size=20, color=GRAY)
+        desc_w1.next_to(matrice_w1, DOWN, buff=0.1)
+        
+        gruppo_w1 = VGroup(etichetta_w1, matrice_w1, desc_w1)
+        
+        # SEZIONE 2: Bias e W2 affiancati nella parte inferiore
+        # Bias b1 - Mostra 12 elementi
+        etichetta_b1 = Text("Bias Hidden Layer:", 
+                           font_size=24, color=BLUE)
+        
+        n_bias_mostrare = min(12, len(b1))
+        # Disponi i bias in 3 righe x 4 colonne per migliore spacing
+        elementi_b1 = []
+        righe_bias = 3
+        cols_bias = 4
+        for r in range(righe_bias):
+            riga = []
+            for c in range(cols_bias):
+                idx = r * cols_bias + c
+                if idx < n_bias_mostrare:
+                    riga.append(f"{b1[idx]:.2f}")
+                else:
+                    riga.append("")
+            if any(riga):  # Solo se la riga non è vuota
+                elementi_b1.append(riga)
+        if len(b1) > n_bias_mostrare:
+            elementi_b1.append(["⋯", "⋯", "⋯", "⋯"])
+        
+        matrice_b1 = Matrix(
+            elementi_b1, 
+            h_buff=0.5, 
+            v_buff=0.3,
+            element_to_mobject_config={"font_size": 18}
+        )
+        matrice_b1.set_color(BLUE)
+        
+        desc_b1 = Text(f"b₁ shape: {len(b1)} elementi (mostrando {n_bias_mostrare})", 
+                      font_size=18, color=GRAY)
+        
+        gruppo_b1 = VGroup(etichetta_b1, matrice_b1, desc_b1)
+        gruppo_b1.arrange(DOWN, buff=0.1)
+        
+        # W2 Matrix (Hidden → Output) - Mostra 12 elementi
+        etichetta_w2 = Text("Pesi Hidden → Output:", 
+                           font_size=24, color=GREEN)
+        
+        n_righe_mostrare_w2 = min(12, W2.shape[0])
+        elementi_w2 = [[f"{W2[i,0]:.2f}"] for i in range(n_righe_mostrare_w2)]
+        if W2.shape[0] > n_righe_mostrare_w2:
+            elementi_w2.append(["⋮"])
+            
+        matrice_w2 = Matrix(
+            elementi_w2, 
+            h_buff=0.4, 
+            v_buff=0.3,
+            element_to_mobject_config={"font_size": 18}
+        )
+        matrice_w2.set_color(GREEN)
+        
+        desc_w2 = Text(f"W₂ shape: {W2.shape[0]} × 1 (mostrando {n_righe_mostrare_w2} righe)", 
+                      font_size=18, color=GRAY)
+        
+        # Output bias
+        elemento_b2 = f"b₂ = {b2[0]:.3f}"
+        etichetta_b2 = Text("Bias Output:", font_size=24, color=GREEN)
+        valore_b2 = Text(elemento_b2, font_size=28, color=GREEN)
+        
+        gruppo_w2 = VGroup(etichetta_w2, matrice_w2, desc_w2)
+        gruppo_w2.arrange(DOWN, buff=0.1)
+        
+        gruppo_bias_output = VGroup(etichetta_b2, valore_b2)
+        gruppo_bias_output.arrange(DOWN, buff=0.1)
+        
+        # Organizza layout nella parte inferiore
+        sezione_inferiore = VGroup(gruppo_b1, gruppo_w2, gruppo_bias_output)
+        sezione_inferiore.arrange(RIGHT, buff=1.0)
+        sezione_inferiore.move_to(DOWN * 1.2)
+        
+        # Animazioni sequenziali
+        self.play(Write(gruppo_w1), run_time=2)
+        self.wait(1)
+        
+        self.play(Write(gruppo_b1), run_time=1.5)
+        self.wait(0.5)
+        
+        self.play(Write(gruppo_w2), run_time=1.5)
+        self.wait(0.5)
+        
+        self.play(Write(gruppo_bias_output), run_time=1)
+        self.wait(1)
+        
+        # Formula finale migliorata e più leggibile
+        self.play(*[FadeOut(mob) for mob in self.mobjects], run_time=1)
