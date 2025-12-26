@@ -21,3 +21,4 @@ media/
 .DS_Store
 Thumbs.db
 /.vs
+/saved_models

@@ -56,17 +56,21 @@ python -c "import numpy, matplotlib, keras, plotly, manim; print('All packages i
 
 ### nn_pitagora.py
 Main training script that:
-- Generates training samples (configurable, default: 2,000)
-- Trains the neural network (configurable epochs, default: 100)
+- Generates training samples (configurable, default: 5,000)
+- Trains the neural network (configurable epochs, default: 75)
+- Saves complete models at specific epochs to `saved_models/` directory
 - Plots training/validation loss and MAE
 - Tests predictions on sample inputs
 - Saves weights to `model_weights.pkl` for animation
+- Generates epoch surface data for 3D visualizations
 
-**Configurable parameters:**
-- `n_samples`: Number of training samples
-- `Dense(N, ...)`: Number of hidden neurons
-- `epochs`: Number of training epochs
-- `batch_size`: Batch size for training
+**Key functions:**
+
+- `genera_dati_addestramento()`: Generates training data
+- `costruisci_modello()`: Creates neural network architecture
+- `addestra_modello()`: Trains and saves models at specific epochs
+- `load_saved_model()`: Loads a model from a specific epoch
+- `salva_pesi_modello()`: Exports weights in Manim-compatible format
 
 ### animate_weights.py
 Manim animation script with three scenes:
@@ -75,7 +79,18 @@ Manim animation script with three scenes:
 3. **SampleCalculation**: Step-by-step calculation demonstration for input (1, 2)
 
 ### animate_surface.py
-Manim 3D animation showing the evolution of the NN's surface approximation through training epochs. Features smooth morphing transitions, rotating camera, and color gradient from red (epoch 1) to green (epoch 50). See ANIMATION_GUIDE.md for detailed usage and customization options.
+Manim 3D animation showing the evolution of the NN's surface approximation through training epochs. Features smooth morphing transitions, rotating camera, and color gradient from red (epoch 1) to green (epoch 50).
+
+### right_triangles.py
+Manim scene demonstrating Pythagorean theorem with neural network predictions:
+
+- **TriangoliRettangoli**: Main scene showing:
+  - Left panel: 4 input right triangles with known Pythagorean triples (3-4-5, 5-12-13, 8-15-17, 7-24-25)
+  - Center panel: Animated feed-forward neural network visualization with 2 inputs, N hidden neurons, and 1 output
+  - Right panel: Output triangles with NN predictions overlaid on input triangles
+  - Shows prediction accuracy across epochs (1, 10, 75) with error analysis
+  - Network visualization automatically extracts architecture from saved models
+  - Arrows with optimized appearance (thin lines, small tips, touching neurons)
 
 ## Usage
 
@@ -115,6 +130,11 @@ manim -pql animate_weights.py SampleCalculation
 Render all scenes at once:
 ```bash
 manim -pql animate_weights.py NeuralNetworkWeights WeightHeatmap SampleCalculation
+```
+
+Render the right triangles scene:
+```bash
+manim -pql right_triangles.py TriangoliRettangoli
 ```
 
 Quality options:

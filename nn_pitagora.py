@@ -2,81 +2,116 @@ import numpy as np
 import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers import Dense
-from keras.optimizers import Adam
+from keras.optimizers import Adam, Adagrad, SGD
 from keras.callbacks import Callback
+from keras.models import load_model
 import pickle
+import os
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 
-def set_random_seed(seed=42):
-    """Set random seed for reproducibility."""
-    np.random.seed(seed)
+def imposta_seme_casuale(seme=42):
+    """Imposta il seme casuale per la riproducibilità."""
+    np.random.seed(seme)
 
 
-def generate_training_data(n_samples=5000, range_min=-5, range_max=5):
-    """Generate training data for Pythagorean theorem neural network.
-    
+def genera_dati_addestramento(n_campioni=5000, range_min=-5, range_max=5):
+    """Genera dati di addestramento per la rete neurale del teorema di Pitagora.
+
     Args:
-        n_samples (int): Number of samples to generate
-        range_min (float): Minimum value for a and b
-        range_max (float): Maximum value for a and b
-        
+        n_campioni (int): Numero di campioni da generare
+        range_min (float): Valore minimo per a e b
+        range_max (float): Valore massimo per a e b
+
     Returns:
-        tuple: (X_train, y_train) where X_train is input data and y_train is target
+        tuple: (X_addestramento, y_addestramento) dove X_addestramento sono i dati di input e y_addestramento il target
     """
-    a_train = np.random.uniform(range_min, range_max, n_samples)
-    b_train = np.random.uniform(range_min, range_max, n_samples)
-    y_train = np.sqrt(a_train**2 + b_train**2)
-    X_train = np.column_stack((a_train, b_train))
-    return X_train, y_train
-def build_model(hidden_units=50, activation='tanh', learning_rate=0.001):
-    """Build and compile the neural network model.
-    
+    a_addestramento = np.random.uniform(range_min, range_max, n_campioni)
+    b_addestramento = np.random.uniform(range_min, range_max, n_campioni)
+    y_addestramento = np.sqrt(a_addestramento**2 + b_addestramento**2)
+    X_addestramento = np.column_stack((a_addestramento, b_addestramento))
+    return X_addestramento, y_addestramento
+
+
+def costruisci_modello(
+    unita_nascoste=50, attivazione="tanh", tasso_apprendimento=0.001
+):
+    """Costruisce e compila il modello di rete neurale.
+
     Args:
-        hidden_units (int): Number of neurons in hidden layer
-        activation (str): Activation function for hidden layer
-        learning_rate (float): Learning rate for optimizer
-        
+        unita_nascoste (int): Numero di neuroni nello strato nascosto
+        attivazione (str): Funzione di attivazione per lo strato nascosto
+        tasso_apprendimento (float): Tasso di apprendimento per l'ottimizzatore
+
     Returns:
-        Sequential: Compiled Keras model
+        Sequential: Modello Keras compilato
     """
-    model = Sequential([
-        Dense(hidden_units, activation=activation, input_shape=(2,)),
-        Dense(1, activation='linear')
-    ])
-    
-    model.compile(
-        optimizer=Adam(learning_rate=learning_rate),
-        loss='mse',
-        metrics=['mae']
+    modello = Sequential(
+        [
+            Dense(unita_nascoste, activation=attivazione, input_shape=(2,)),
+            Dense(1, activation="linear"),
+        ]
     )
-    
-    return model
+
+    modello.compile(
+        optimizer=SGD(learning_rate=tasso_apprendimento), 
+        loss="mse", 
+        metrics=["mae"],
+
+    )
+
+    return modello
 
 
-def display_model_info(model):
-    """Display model architecture information."""
-    print("Model Architecture:")
-    model.summary()
+def mostra_info_modello(modello):
+    """Mostra informazioni sull'architettura del modello."""
+    print("Architettura del Modello:")
+    modello.summary()
 
-class SaveModelAtEpochs(Callback):
-    """Custom callback to save model weights at specific epochs."""
-    
-    def __init__(self, epochs_to_save):
+
+class SalvaModelloAEpoche(Callback):
+    """Callback personalizzato per salvare i pesi del modello in epoche specifiche."""
+
+    def __init__(self, epoche_da_salvare, salva_modelli_completi=True):
         super().__init__()
-        self.epochs_to_save = epochs_to_save
-        self.saved_models = {}
+        self.epoche_da_salvare = epoche_da_salvare
+        self.modelli_salvati = {}
+        self.salva_modelli_completi = salva_modelli_completi
+        
+        # Crea directory per modelli salvati se necessario
+        if self.salva_modelli_completi:
+            os.makedirs("saved_models", exist_ok=True)
 
-    def on_epoch_end(self, epoch, logs=None):
-        epoch_num = epoch + 1
-        if epoch_num in self.epochs_to_save:
-            print(f"\nSaving model at epoch {epoch_num}")
-            self.saved_models[epoch_num] = [w.copy() for w in self.model.get_weights()]
+    def on_epoch_end(self, epoca, logs=None):
+        numero_epoca = epoca + 1
+        if numero_epoca in self.epoche_da_salvare:
+            print(f"\nSalvataggio modello all'epoca {numero_epoca}")
+            
+            # Salva i pesi per compatibilità con codice esistente
+            self.modelli_salvati[numero_epoca] = [
+                p.copy() for p in self.model.get_weights()
+            ]
+            
+            # Salva modello completo usando model.save()
+            if self.salva_modelli_completi:
+                model_path = f"saved_models/model_epoch_{numero_epoca:03d}.keras"
+                self.model.save(model_path)
+                print(f"Modello completo salvato in '{model_path}'")
 
-def train_model(model, X_train, y_train, epochs=75, batch_size=32, validation_split=0.2, epochs_to_save=None):
+
+def addestra_modello(
+    model,
+    X_train,
+    y_train,
+    epochs=75,
+    batch_size=32,
+    validation_split=0.2,
+    epochs_to_save=None,
+    save_complete_models=True,
+):
     """Train the neural network model.
-    
+
     Args:
         model: Compiled Keras model
         X_train: Training input data
@@ -85,352 +120,426 @@ def train_model(model, X_train, y_train, epochs=75, batch_size=32, validation_sp
         batch_size (int): Batch size for training
         validation_split (float): Fraction of data to use for validation
         epochs_to_save (list): Epochs at which to save model weights
-        
+        save_complete_models (bool): Whether to save complete models using model.save()
+
     Returns:
         tuple: (history, save_callback) Training history and callback with saved models
     """
     print("\nTraining the model...")
-    
+
     if epochs_to_save is None:
         epochs_to_save = [1, 3, 5, 10, 20, 30, 40, 50, 75]
-    
-    save_callback = SaveModelAtEpochs(epochs_to_save)
-    
+
+    save_callback = SalvaModelloAEpoche(epochs_to_save, save_complete_models)
+
     history = model.fit(
-        X_train, y_train,
+        X_train,
+        y_train,
         epochs=epochs,
         batch_size=batch_size,
         validation_split=validation_split,
         verbose=1,
-        callbacks=[save_callback]
+        callbacks=[save_callback],
     )
-    
+
     return history, save_callback
 
-def save_model_weights(model, filename='model_weights.pkl'):
+
+def save_model_weights(model, filename="model_weights.pkl"):
     """Save model weights for external use (e.g., Manim animation).
-    
+
     Args:
         model: Trained Keras model
         filename (str): Output filename for weights
     """
     weights = model.get_weights()
     weights_data = {
-        'W1': weights[0],  # Input to hidden layer weights
-        'b1': weights[1],  # Hidden layer biases
-        'W2': weights[2],  # Hidden to output layer weights
-        'b2': weights[3]   # Output layer bias
+        "W1": weights[0],  # Input to hidden layer weights
+        "b1": weights[1],  # Hidden layer biases
+        "W2": weights[2],  # Hidden to output layer weights
+        "b2": weights[3],  # Output layer bias
     }
-    with open(filename, 'wb') as f:
+    with open(filename, "wb") as f:
         pickle.dump(weights_data, f)
     print(f"\nModel weights saved to '{filename}'")
 
-def plot_training_history(history, save_filename='training_loss.png', show_plot=True):
-    """Plot training loss and MAE history.
+
+def load_saved_model(epoch_number, models_directory="saved_models"):
+    """Carica un modello salvato da una specifica epoca.
     
     Args:
-        history: Keras training history object
-        save_filename (str): Filename to save the plot
-        show_plot (bool): Whether to display the plot
+        epoch_number (int): Numero dell'epoca del modello da caricare
+        models_directory (str): Directory contenente i modelli salvati
+        
+    Returns:
+        keras.Model: Modello caricato
+    """
+    model_path = os.path.join(models_directory, f"model_epoch_{epoch_number:03d}.keras")
+    
+    if not os.path.exists(model_path):
+        available_models = []
+        if os.path.exists(models_directory):
+            for file in os.listdir(models_directory):
+                if file.startswith("model_epoch_"):
+                    available_models.append(file)
+        
+        raise FileNotFoundError(
+            f"Modello per epoca {epoch_number} non trovato in '{model_path}'. "
+            f"Modelli disponibili: {available_models}"
+        )
+    
+    model = load_model(model_path)
+    print(f"Modello epoca {epoch_number} caricato da '{model_path}'")
+    return model
+
+
+def grafico_cronologia_addestramento(
+    cronologia, nome_file_salvataggio="perdita_addestramento.png", mostra_grafico=True
+):
+    """Grafico della perdita e cronologia MAE dell'addestramento.
+
+    Args:
+        cronologia: Oggetto cronologia addestramento Keras
+        nome_file_salvataggio (str): Nome file per salvare il grafico
+        mostra_grafico (bool): Se mostrare il grafico
     """
     plt.figure(figsize=(12, 5))
 
     plt.subplot(1, 2, 1)
-    plt.plot(history.history['loss'], label='Training Loss')
-    plt.plot(history.history['val_loss'], label='Validation Loss')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss (MSE)')
-    plt.title('Loss During Training')
+    plt.plot(cronologia.history["loss"], label="Perdita Addestramento")
+    plt.plot(cronologia.history["val_loss"], label="Perdita Validazione")
+    plt.xlabel("Epoca")
+    plt.ylabel("Perdita (MSE)")
+    plt.title("Perdita Durante Addestramento")
     plt.legend()
     plt.grid(True)
 
     plt.subplot(1, 2, 2)
-    plt.plot(history.history['mae'], label='Training MAE')
-    plt.plot(history.history['val_mae'], label='Validation MAE')
-    plt.xlabel('Epoch')
-    plt.ylabel('Mean Absolute Error')
-    plt.title('MAE During Training')
+    plt.plot(cronologia.history["mae"], label="MAE Addestramento")
+    plt.plot(cronologia.history["val_mae"], label="MAE Validazione")
+    plt.xlabel("Epoca")
+    plt.ylabel("Errore Assoluto Medio")
+    plt.title("MAE Durante Addestramento")
     plt.legend()
     plt.grid(True)
 
     plt.tight_layout()
-    plt.savefig(save_filename)
-    print(f"\nTraining plots saved as '{save_filename}'")
-    
-    if show_plot:
+    plt.savefig(nome_file_salvataggio)
+    print(f"\nGrafici addestramento salvati come '{nome_file_salvataggio}'")
+
+    if mostra_grafico:
         plt.show()
 
-def evaluate_model_on_test_cases(model):
-    """Evaluate the model on specific test cases.
-    
-    Args:
-        model: Trained Keras model
-    """
-    print("\n" + "="*60)
-    print("Testing the model on specific (a, b) couples:")
-    print("="*60)
 
-    test_cases = [
-        (1, 2),      # Should be sqrt(5) ≈ 2.236
-        (3, 4),      # Should be 5
-        (-3, 4),     # Should be 5
-        (3, -4),     # Should be 5
-        (-3, -4),    # Should be 5
-        (1, 1),      # Should be sqrt(2) ≈ 1.414
-        (-1, -1),    # Should be sqrt(2) ≈ 1.414
-        (0, 5),      # Should be 5
-        (5, 0),      # Should be 5
-        (-5, 0),     # Should be 5
-        (0, -5),     # Should be 5
-        (4.5, 4.5),  # Should be sqrt(40.5) ≈ 6.364
+def valuta_modello_su_casi_test(modello):
+    """Valuta il modello su casi di test specifici.
+
+    Args:
+        modello: Modello Keras addestrato
+    """
+    print("\n" + "=" * 60)
+    print("Test del modello su coppie specifiche (a, b):")
+    print("=" * 60)
+
+    casi_test = [
+        (1, 2),  # Dovrebbe essere sqrt(5) ≈ 2.236
+        (3, 4),  # Dovrebbe essere 5
+        (-3, 4),  # Dovrebbe essere 5
+        (3, -4),  # Dovrebbe essere 5
+        (-3, -4),  # Dovrebbe essere 5
+        (1, 1),  # Dovrebbe essere sqrt(2) ≈ 1.414
+        (-1, -1),  # Dovrebbe essere sqrt(2) ≈ 1.414
+        (0, 5),  # Dovrebbe essere 5
+        (5, 0),  # Dovrebbe essere 5
+        (-5, 0),  # Dovrebbe essere 5
+        (0, -5),  # Dovrebbe essere 5
+        (4.5, 4.5),  # Dovrebbe essere sqrt(40.5) ≈ 6.364
     ]
 
-    for a, b in test_cases:
+    for a, b in casi_test:
         X_test = np.array([[a, b]])
-        prediction = model.predict(X_test, verbose=0)[0][0]
-        actual = np.sqrt(a**2 + b**2)
-        error = abs(prediction - actual)
-        error_pct = (error / actual) * 100 if actual != 0 else 0
+        predizione = modello.predict(X_test, verbose=0)[0][0]
+        valore_reale = np.sqrt(a**2 + b**2)
+        errore = abs(predizione - valore_reale)
+        errore_pct = (errore / valore_reale) * 100 if valore_reale != 0 else 0
 
-        print(f"a={a:6.2f}, b={b:6.2f} | "
-              f"Predicted: {prediction:7.4f} | "
-              f"Actual: {actual:7.4f} | "
-              f"Error: {error:6.4f} ({error_pct:5.2f}%)")
-
-    print("="*60)
-
-def get_predictions_for_epoch(weights, X_input, output_shape, hidden_units=50, activation='tanh'):
-    """Create a temporary model and get predictions for a specific epoch.
-    
-    Args:
-        weights: Model weights from specific epoch
-        X_input: Input data for predictions
-        output_shape: Shape to reshape predictions
-        hidden_units (int): Number of hidden units
-        activation (str): Activation function
-        
-    Returns:
-        ndarray: Reshaped predictions
-    """
-    temp_model = Sequential([
-        Dense(hidden_units, activation=activation, input_shape=(2,)),
-        Dense(1, activation='linear')
-    ])
-    temp_model.build((None, 2))
-    temp_model.set_weights(weights)
-    return temp_model.predict(X_input, verbose=0).reshape(output_shape)
-
-
-def get_epoch_color(epoch_idx, total_epochs):
-    """Generate color gradient from red to green.
-    
-    Args:
-        epoch_idx (int): Index of current epoch
-        total_epochs (int): Total number of epochs
-        
-    Returns:
-        str: Color name for the epoch
-    """
-    colors = ['red', 'orange', 'yellow', 'yellowgreen', 'green']
-    position = epoch_idx / (total_epochs - 1) if total_epochs > 1 else 0
-    color_idx = position * (len(colors) - 1)
-    idx_low = int(color_idx)
-    return colors[idx_low]
-
-
-def create_3d_visualization(save_callback, epochs_to_plot, resolution=50, hidden_units=50, activation='tanh'):
-    """Create 3D visualization comparing actual function with NN predictions.
-    
-    Args:
-        save_callback: Callback object with saved model weights
-        epochs_to_plot (list): List of epochs to visualize
-        resolution (int): Grid resolution for visualization
-        hidden_units (int): Number of hidden units in model
-        activation (str): Activation function used in model
-        
-    Returns:
-        tuple: (fig, a_range, b_range, Z_actual, X_grid)
-    """
-    print("\nGenerating 3D comparison plot...")
-    
-    # Create meshgrid
-    a_range = np.linspace(-5, 5, resolution)
-    b_range = np.linspace(-5, 5, resolution)
-    A, B = np.meshgrid(a_range, b_range)
-    
-    # Calculate actual function values
-    Z_actual = np.sqrt(A**2 + B**2)
-    
-    # Prepare input for predictions
-    X_grid = np.column_stack((A.ravel(), B.ravel()))
-    
-    # Create figure
-    fig = go.Figure()
-    
-    print("\nApproximation Quality at different epochs:")
-    print("="*60)
-    
-    # Add actual function surface
-    fig.add_trace(go.Surface(
-        x=A, y=B, z=Z_actual,
-        colorscale=[[0, 'blue'], [1, 'blue']],
-        opacity=0.3,
-        showscale=False,
-        name='Actual Function',
-        hovertemplate='a: %{x}<br>b: %{y}<br>Actual: %{z:.2f}<extra></extra>'
-    ))
-    
-    # Add NN prediction surfaces for each epoch
-    for idx, epoch in enumerate(epochs_to_plot):
-        Z_predicted = get_predictions_for_epoch(
-            save_callback.saved_models[epoch], 
-            X_grid, 
-            A.shape, 
-            hidden_units, 
-            activation
+        print(
+            f"a={a:6.2f}, b={b:6.2f} | "
+            f"Predetto: {predizione:7.4f} | "
+            f"Reale: {valore_reale:7.4f} | "
+            f"Errore: {errore:6.4f} ({errore_pct:5.2f}%)"
         )
-        
-        # Calculate metrics
-        difference = np.abs(Z_predicted - Z_actual)
-        mean_error = np.mean(difference)
-        max_error = np.max(difference)
-        rmse = np.sqrt(np.mean(difference**2))
-        
-        print(f"Epoch {epoch:2d} | MAE: {mean_error:7.4f} | Max Error: {max_error:7.4f} | RMSE: {rmse:7.4f}")
-        
-        color = get_epoch_color(idx, len(epochs_to_plot))
-        fig.add_trace(go.Surface(
-            x=A, y=B, z=Z_predicted,
-            colorscale=[[0, color], [1, color]],
-            opacity=0.4,
+
+    print("=" * 60)
+
+
+def ottieni_predizioni_per_epoca(
+    pesi, X_input, forma_output, unita_nascoste=50, attivazione="tanh"
+):
+    """Crea un modello temporaneo e ottiene predizioni per un'epoca specifica.
+
+    Args:
+        pesi: Pesi del modello da epoca specifica
+        X_input: Dati di input per le predizioni
+        forma_output: Forma per rimodellare le predizioni
+        unita_nascoste (int): Numero di unità nascoste
+        attivazione (str): Funzione di attivazione
+
+    Returns:
+        ndarray: Predizioni rimodellate
+    """
+    modello_temp = Sequential(
+        [
+            Dense(unita_nascoste, activation=attivazione, input_shape=(2,)),
+            Dense(1, activation="linear"),
+        ]
+    )
+    modello_temp.build((None, 2))
+    modello_temp.set_weights(pesi)
+    return modello_temp.predict(X_input, verbose=0).reshape(forma_output)
+
+
+def ottieni_colore_epoca(indice_epoca, totale_epoche):
+    """Genera gradiente di colore dal rosso al verde.
+
+    Args:
+        indice_epoca (int): Indice dell'epoca corrente
+        totale_epoche (int): Numero totale di epoche
+
+    Returns:
+        str: Nome del colore per l'epoca
+    """
+    colori = ["red", "orange", "yellow", "yellowgreen", "green"]
+    posizione = indice_epoca / (totale_epoche - 1) if totale_epoche > 1 else 0
+    indice_colore = posizione * (len(colori) - 1)
+    indice_basso = int(indice_colore)
+    return colori[indice_basso]
+
+
+def crea_visualizzazione_3d(
+    callback_salvataggio,
+    epoche_da_graficare,
+    risoluzione=50,
+    unita_nascoste=50,
+    attivazione="tanh",
+):
+    """Crea visualizzazione 3D confrontando funzione reale con predizioni NN.
+
+    Args:
+        callback_salvataggio: Oggetto callback con pesi modello salvati
+        epoche_da_graficare (list): Lista di epoche da visualizzare
+        risoluzione (int): Risoluzione griglia per visualizzazione
+        unita_nascoste (int): Numero di unità nascoste nel modello
+        attivazione (str): Funzione di attivazione usata nel modello
+
+    Returns:
+        tuple: (fig, range_a, range_b, Z_reale, X_griglia)
+    """
+    print("\nGenerazione grafico confronto 3D...")
+
+    # Crea meshgrid
+    range_a = np.linspace(-5, 5, risoluzione)
+    range_b = np.linspace(-5, 5, risoluzione)
+    A, B = np.meshgrid(range_a, range_b)
+
+    # Calcola valori funzione reale
+    Z_reale = np.sqrt(A**2 + B**2)
+
+    # Prepara input per predizioni
+    X_griglia = np.column_stack((A.ravel(), B.ravel()))
+
+    # Crea figura
+    fig = go.Figure()
+
+    print("\nQualità Approssimazione a epoche diverse:")
+    print("=" * 60)
+
+    # Aggiungi superficie funzione reale
+    fig.add_trace(
+        go.Surface(
+            x=A,
+            y=B,
+            z=Z_reale,
+            colorscale=[[0, "blue"], [1, "blue"]],
+            opacity=0.3,
             showscale=False,
-            name=f'Epoch {epoch}',
-            hovertemplate=f'Epoch {epoch}<br>a: %{{x}}<br>b: %{{y}}<br>Predicted: %{{z:.2f}}<extra></extra>'
-        ))
-    
-    print("="*60)
-    
-    # Update layout
-    epoch_range = f"Epochs {epochs_to_plot[0]}→{epochs_to_plot[-1]}"
-    fig.update_layout(
-        title=f'Neural Network Learning Progress: Approximating f(a,b) = √(a² + b²)<br><sub>Blue=Actual, Red→Green={epoch_range}</sub>',
-        scene=dict(
-            xaxis_title='a',
-            yaxis_title='b',
-            zaxis_title='f(a,b)',
-            camera=dict(
-                eye=dict(x=1.5, y=1.5, z=1.3)
+            name="Funzione Reale",
+            hovertemplate="a: %{x}<br>b: %{y}<br>Reale: %{z:.2f}<extra></extra>",
+        )
+    )
+
+    # Aggiungi superfici predizioni NN per ogni epoca
+    for indice, epoca in enumerate(epoche_da_graficare):
+        Z_predetto = ottieni_predizioni_per_epoca(
+            callback_salvataggio.modelli_salvati[epoca],
+            X_griglia,
+            A.shape,
+            unita_nascoste,
+            attivazione,
+        )
+
+        # Calcola metriche
+        differenza = np.abs(Z_predetto - Z_reale)
+        errore_medio = np.mean(differenza)
+        errore_max = np.max(differenza)
+        rmse = np.sqrt(np.mean(differenza**2))
+
+        print(
+            f"Epoca {epoca:2d} | MAE: {errore_medio:7.4f} | Errore Max: {errore_max:7.4f} | RMSE: {rmse:7.4f}"
+        )
+
+        colore = ottieni_colore_epoca(indice, len(epoche_da_graficare))
+        fig.add_trace(
+            go.Surface(
+                x=A,
+                y=B,
+                z=Z_predetto,
+                colorscale=[[0, colore], [1, colore]],
+                opacity=0.4,
+                showscale=False,
+                name=f"Epoca {epoca}",
+                hovertemplate=f"Epoca {epoca}<br>a: %{{x}}<br>b: %{{y}}<br>Predetto: %{{z:.2f}}<extra></extra>",
             )
+        )
+
+    print("=" * 60)
+
+    # Aggiorna layout
+    range_epoche = f"Epoche {epoche_da_graficare[0]}→{epoche_da_graficare[-1]}"
+    fig.update_layout(
+        title=f"Progresso Apprendimento Rete Neurale: Approssimazione f(a,b) = √(a² + b²)<br><sub>Blu=Reale, Rosso→Verde={range_epoche}</sub>",
+        scene=dict(
+            xaxis_title="a",
+            yaxis_title="b",
+            zaxis_title="f(a,b)",
+            camera=dict(eye=dict(x=1.5, y=1.5, z=1.3)),
         ),
         height=800,
         width=1200,
         showlegend=True,
-        legend=dict(x=0.7, y=0.9)
+        legend=dict(x=0.7, y=0.9),
     )
-    
-    return fig, a_range, b_range, Z_actual, X_grid
+
+    return fig, range_a, range_b, Z_reale, X_griglia
 
 
-def save_epoch_data_for_animation(save_callback, epochs_to_plot, a_range, b_range, Z_actual, X_grid, hidden_units=50, activation='tanh', filename='epoch_surfaces.pkl'):
-    """Save epoch data for Manim animation.
-    
+def salva_dati_epoca_per_animazione(
+    callback_salvataggio,
+    epoche_da_salvare,
+    range_a,
+    range_b,
+    Z_reale,
+    X_griglia,
+    unita_nascoste=50,
+    attivazione="tanh",
+    nome_file="superfici_epoche.pkl",
+):
+    """Salva dati epoca per animazione Manim.
+
     Args:
-        save_callback: Callback object with saved model weights
-        epochs_to_plot (list): List of epochs to save
-        a_range, b_range: Coordinate ranges
-        Z_actual: Actual function values
-        X_grid: Input grid for predictions
-        hidden_units (int): Number of hidden units
-        activation (str): Activation function
-        filename (str): Output filename
+        callback_salvataggio: Oggetto callback con pesi modello salvati
+        epoche_da_salvare (list): Lista di epoche da salvare
+        range_a, range_b: Range di coordinate
+        Z_reale: Valori funzione reale
+        X_griglia: Griglia input per predizioni
+        unita_nascoste (int): Numero di unità nascoste
+        attivazione (str): Funzione di attivazione
+        nome_file (str): Nome file di output
     """
-    print("\nSaving epoch data for Manim animation...")
-    epoch_data = {
-        'a_range': a_range,
-        'b_range': b_range,
-        'Z_actual': Z_actual,
-        'epochs': {}
+    print("\nSalvataggio dati epoca per animazione Manim...")
+    dati_epoca = {
+        "a_range": range_a,
+        "b_range": range_b,
+        "Z_actual": Z_reale,
+        "epochs": {},
     }
-    
-    for epoch in epochs_to_plot:
-        Z_predicted = get_predictions_for_epoch(
-            save_callback.saved_models[epoch], 
-            X_grid, 
-            Z_actual.shape, 
-            hidden_units, 
-            activation
+
+    for epoca in epoche_da_salvare:
+        Z_predetto = ottieni_predizioni_per_epoca(
+            callback_salvataggio.modelli_salvati[epoca],
+            X_griglia,
+            Z_reale.shape,
+            unita_nascoste,
+            attivazione,
         )
-        epoch_data['epochs'][epoch] = Z_predicted
-    
-    with open(filename, 'wb') as f:
-        pickle.dump(epoch_data, f)
-    print(f"Epoch surface data saved to '{filename}' for Manim animation")
+        dati_epoca["epochs"][epoca] = Z_predetto
+
+    with open(nome_file, "wb") as f:
+        pickle.dump(dati_epoca, f)
+    print(f"Dati superficie epoca salvati in '{nome_file}' per animazione Manim")
 
 
-def save_interactive_plot(fig, filename='3d_comparison_epochs.html'):
-    """Save interactive 3D plot as HTML file.
-    
+def salva_grafico_interattivo(fig, nome_file="confronto_3d_epoche.html"):
+    """Salva grafico 3D interattivo come file HTML.
+
     Args:
-        fig: Plotly figure object
-        filename (str): Output filename
+        fig: Oggetto figura Plotly
+        nome_file (str): Nome file di output
     """
-    fig.write_html(filename)
-    print(f"\nInteractive 3D comparison plot saved as '{filename}'")
+    fig.write_html(nome_file)
+    print(f"\nGrafico confronto 3D interattivo salvato come '{nome_file}'")
 
 
-def main():
-    """Main function to orchestrate the entire neural network workflow."""
-    # Configuration
-    hidden_units = 50
-    activation = 'relu'
-    learning_rate = 0.001
-    epochs = 75
-    epochs_to_plot = [1, 3, 5, 10, 20, 30, 40, 50, 75]
-    
-    # Set random seed
-    set_random_seed(42)
-    
-    # Generate training data
-    X_train, y_train = generate_training_data(n_samples=5000)
-    
-    # Build and display model
-    model = build_model(hidden_units, activation, learning_rate)
-    display_model_info(model)
-    
-    # Train the model
-    history, save_callback = train_model(
-        model, X_train, y_train, 
-        epochs=epochs, 
-        epochs_to_save=epochs_to_plot
+def principale():
+    """Funzione principale per orchestrare l'intero flusso di lavoro della rete neurale."""
+    # Configurazione
+    unita_nascoste = 20
+    attivazione = "relu"
+    tasso_apprendimento = 0.001
+    epoche = 75
+    epoche_da_salvare = [1, 3, 5, 10, 20, 30, 40, 50, 75]
+
+    # Imposta seme casuale
+    imposta_seme_casuale(42)
+
+    # Genera dati di addestramento
+    X_addestramento, y_addestramento = genera_dati_addestramento(n_campioni=5000)
+
+    # Costruisci e mostra modello
+    modello = costruisci_modello(unita_nascoste, attivazione, tasso_apprendimento)
+    mostra_info_modello(modello)
+
+    # Addestra il modello
+    cronologia, callback_salvataggio = addestra_modello(
+        modello,
+        X_addestramento,
+        y_addestramento,
+        epochs=epoche,
+        epochs_to_save=epoche_da_salvare,
     )
-    
-    # Save model weights
-    save_model_weights(model)
-    
-    # Plot training history
-    plot_training_history(history)
-    
-    # Evaluate model on test cases
-    evaluate_model_on_test_cases(model)
-    
-    # Create 3D visualization
-    fig, a_range, b_range, Z_actual, X_grid = create_3d_visualization(
-        save_callback, epochs_to_plot, 
-        hidden_units=hidden_units, 
-        activation=activation
+
+    # Salva pesi del modello
+    save_model_weights(modello)
+
+    # Grafico cronologia addestramento
+    grafico_cronologia_addestramento(cronologia)
+
+    # Valuta modello su casi test
+    valuta_modello_su_casi_test(modello)
+
+    # Crea visualizzazione 3D
+    fig, range_a, range_b, Z_reale, X_griglia = crea_visualizzazione_3d(
+        callback_salvataggio,
+        epoche_da_salvare,
+        unita_nascoste=unita_nascoste,
+        attivazione=attivazione,
     )
-    
-    # Save epoch data for animation
-    save_epoch_data_for_animation(
-        save_callback, epochs_to_plot, 
-        a_range, b_range, Z_actual, X_grid,
-        hidden_units=hidden_units, 
-        activation=activation
+
+    # Salva dati epoca per animazione
+    salva_dati_epoca_per_animazione(
+        callback_salvataggio,
+        epoche_da_salvare,
+        range_a,
+        range_b,
+        Z_reale,
+        X_griglia,
+        unita_nascoste=unita_nascoste,
+        attivazione=attivazione,
     )
-    
-    # Save interactive plot
-    save_interactive_plot(fig)
+
+    # Salva grafico interattivo
+    salva_grafico_interattivo(fig)
 
 
 if __name__ == "__main__":
-    main()
+    principale()

@@ -3,275 +3,275 @@ import numpy as np
 from keras.models import load_model
 import pickle
 
-class NeuralNetworkWeights(Scene):
+class PesiReteNeurale(Scene):
     def construct(self):
-        # Load the trained model weights
+        # Carica pesi modello addestrato
         try:
-            with open('model_weights.pkl', 'rb') as f:
-                weights_data = pickle.load(f)
-            W1 = weights_data['W1']  # Shape: (2, 100)
-            b1 = weights_data['b1']  # Shape: (100,)
-            W2 = weights_data['W2']  # Shape: (100, 1)
-            b2 = weights_data['b2']  # Shape: (1,)
+            with open('pesi_modello.pkl', 'rb') as f:
+                dati_pesi = pickle.load(f)
+            W1 = dati_pesi['W1']  # Forma: (2, 100)
+            b1 = dati_pesi['b1']  # Forma: (100,)
+            W2 = dati_pesi['W2']  # Forma: (100, 1)
+            b2 = dati_pesi['b2']  # Forma: (1,)
         except FileNotFoundError:
-            self.add(Text("Error: model_weights.pkl not found!", color=RED))
+            self.add(Text("Errore: pesi_modello.pkl non trovato!", color=RED))
             return
 
-        # Title
-        title = Text("Neural Network: f(a,b) = √(a² + b²)", font_size=36)
-        title.to_edge(UP)
-        self.play(Write(title))
+        # Titolo
+        titolo = Text("Rete Neurale: f(a,b) = √(a² + b²)", font_size=36)
+        titolo.to_edge(UP)
+        self.play(Write(titolo))
         self.wait(0.5)
 
-        # Get actual network size
-        n_hidden_neurons = W1.shape[1]
+        # Ottieni dimensione rete reale
+        n_neuroni_nascosti = W1.shape[1]
 
-        # Network architecture text
-        arch_text = Text(f"Architecture: 2 → {n_hidden_neurons} (ReLU) → 1 (Linear)", font_size=24)
-        arch_text.next_to(title, DOWN)
-        self.play(FadeIn(arch_text))
+        # Testo architettura rete
+        testo_arch = Text(f"Architettura: 2 → {n_neuroni_nascosti} (ReLU) → 1 (Lineare)", font_size=24)
+        testo_arch.next_to(titolo, DOWN)
+        self.play(FadeIn(testo_arch))
         self.wait(0.5)
 
-        # Create simplified network visualization (show all if <=15, else show 15)
-        n_display_neurons = min(n_hidden_neurons, 15)
+        # Crea visualizzazione rete semplificata (mostra tutti se <=15, altrimenti mostra 15)
+        n_neuroni_visualizzati = min(n_neuroni_nascosti, 15)
 
-        # Input layer (2 neurons)
-        input_neurons = VGroup()
-        input_labels = ["a", "b"]
+        # Strato input (2 neuroni)
+        neuroni_input = VGroup()
+        etichette_input = ["a", "b"]
         for i in range(2):
-            neuron = Circle(radius=0.3, color=BLUE, fill_opacity=0.5)
-            neuron.move_to(LEFT * 5 + UP * (1 - i) * 1.5)
-            label = Text(input_labels[i], font_size=24)
-            label.move_to(neuron.get_center())
-            input_neurons.add(VGroup(neuron, label))
+            neurone = Circle(radius=0.3, color=BLUE, fill_opacity=0.5)
+            neurone.move_to(LEFT * 5 + UP * (1 - i) * 1.5)
+            etichetta = Text(etichette_input[i], font_size=24)
+            etichetta.move_to(neurone.get_center())
+            neuroni_input.add(VGroup(neurone, etichetta))
 
-        # Hidden layer (showing subset of 100)
-        hidden_neurons = VGroup()
-        y_positions = np.linspace(3, -3, n_display_neurons)
-        for i in range(n_display_neurons):
-            neuron = Circle(radius=0.25, color=GREEN, fill_opacity=0.5)
-            neuron.move_to(RIGHT * 0 + UP * y_positions[i])
-            hidden_neurons.add(neuron)
+        # Strato nascosto (mostra sottoinsieme di 100)
+        neuroni_nascosti = VGroup()
+        posizioni_y = np.linspace(3, -3, n_neuroni_visualizzati)
+        for i in range(n_neuroni_visualizzati):
+            neurone = Circle(radius=0.25, color=GREEN, fill_opacity=0.5)
+            neurone.move_to(RIGHT * 0 + UP * posizioni_y[i])
+            neuroni_nascosti.add(neurone)
 
-        # Output neuron
-        output_neuron = Circle(radius=0.3, color=RED, fill_opacity=0.5)
-        output_neuron.move_to(RIGHT * 5 + UP * 0)
-        output_label = Text("√(a²+b²)", font_size=20)
-        output_label.move_to(output_neuron.get_center())
-        output_group = VGroup(output_neuron, output_label)
+        # Neurone output
+        neurone_output = Circle(radius=0.3, color=RED, fill_opacity=0.5)
+        neurone_output.move_to(RIGHT * 5 + UP * 0)
+        etichetta_output = Text("√(a²+b²)", font_size=20)
+        etichetta_output.move_to(neurone_output.get_center())
+        gruppo_output = VGroup(neurone_output, etichetta_output)
 
-        # Draw neurons
+        # Disegna neuroni
         self.play(
-            *[FadeIn(inp) for inp in input_neurons],
+            *[FadeIn(inp) for inp in neuroni_input],
             run_time=0.5
         )
         self.play(
-            *[FadeIn(h) for h in hidden_neurons],
+            *[FadeIn(h) for h in neuroni_nascosti],
             run_time=0.5
         )
-        self.play(FadeIn(output_group), run_time=0.5)
+        self.play(FadeIn(gruppo_output), run_time=0.5)
 
-        # Sample indices to display from the hidden neurons
-        display_indices = np.linspace(0, n_hidden_neurons - 1, n_display_neurons, dtype=int)
+        # Indici campione da visualizzare dai neuroni nascosti
+        indici_visualizzazione = np.linspace(0, n_neuroni_nascosti - 1, n_neuroni_visualizzati, dtype=int)
 
-        # Create connections from input to hidden layer with weight labels
-        connections_input_hidden = VGroup()
-        weight_labels_ih = VGroup()
+        # Crea connessioni da input a strato nascosto con etichette peso
+        connessioni_input_nascosto = VGroup()
+        etichette_peso_ih = VGroup()
 
         for i in range(2):
-            for j, h_idx in enumerate(display_indices):
-                weight = W1[i, h_idx]
-                # Normalize weight for color (assuming weights are roughly in [-1, 1] range)
-                normalized_weight = np.clip(weight / 2, -1, 1)
+            for j, h_idx in enumerate(indici_visualizzazione):
+                peso = W1[i, h_idx]
+                # Normalizza peso per colore (assumendo pesi approssimativamente in range [-1, 1])
+                peso_normalizzato = np.clip(peso / 2, -1, 1)
 
-                if normalized_weight > 0:
-                    color = interpolate_color(WHITE, RED, abs(normalized_weight))
+                if peso_normalizzato > 0:
+                    colore = interpolate_color(WHITE, RED, abs(peso_normalizzato))
                 else:
-                    color = interpolate_color(WHITE, BLUE, abs(normalized_weight))
+                    colore = interpolate_color(WHITE, BLUE, abs(peso_normalizzato))
 
-                line = Line(
-                    input_neurons[i][0].get_center(),
-                    hidden_neurons[j].get_center(),
-                    stroke_width=abs(weight) * 2,
-                    color=color,
+                linea = Line(
+                    neuroni_input[i][0].get_center(),
+                    neuroni_nascosti[j].get_center(),
+                    stroke_width=abs(peso) * 2,
+                    color=colore,
                     stroke_opacity=0.6
                 )
-                connections_input_hidden.add(line)
+                connessioni_input_nascosto.add(linea)
 
-                # Add weight value label on the connection
-                weight_text = Text(f"{weight:.2f}", font_size=10, color=color)
-                weight_text.move_to(line.get_center())
-                weight_text.rotate(line.get_angle())
-                weight_labels_ih.add(weight_text)
+                # Aggiungi etichetta valore peso sulla connessione
+                testo_peso = Text(f"{peso:.2f}", font_size=10, color=colore)
+                testo_peso.move_to(linea.get_center())
+                testo_peso.rotate(linea.get_angle())
+                etichette_peso_ih.add(testo_peso)
 
-        # Create connections from hidden to output layer with weight labels
-        connections_hidden_output = VGroup()
-        weight_labels_ho = VGroup()
+        # Crea connessioni da strato nascosto a output con etichette peso
+        connessioni_nascosto_output = VGroup()
+        etichette_peso_ho = VGroup()
 
-        for j, h_idx in enumerate(display_indices):
-            weight = W2[h_idx, 0]
-            normalized_weight = np.clip(weight / 2, -1, 1)
+        for j, h_idx in enumerate(indici_visualizzazione):
+            peso = W2[h_idx, 0]
+            peso_normalizzato = np.clip(peso / 2, -1, 1)
 
-            if normalized_weight > 0:
-                color = interpolate_color(WHITE, RED, abs(normalized_weight))
+            if peso_normalizzato > 0:
+                colore = interpolate_color(WHITE, RED, abs(peso_normalizzato))
             else:
-                color = interpolate_color(WHITE, BLUE, abs(normalized_weight))
+                colore = interpolate_color(WHITE, BLUE, abs(peso_normalizzato))
 
-            line = Line(
-                hidden_neurons[j].get_center(),
-                output_neuron.get_center(),
-                stroke_width=abs(weight) * 2,
-                color=color,
+            linea = Line(
+                neuroni_nascosti[j].get_center(),
+                neurone_output.get_center(),
+                stroke_width=abs(peso) * 2,
+                color=colore,
                 stroke_opacity=0.6
             )
-            connections_hidden_output.add(line)
+            connessioni_nascosto_output.add(linea)
 
-            # Add weight value label on the connection
-            weight_text = Text(f"{weight:.2f}", font_size=10, color=color)
-            weight_text.move_to(line.get_center())
-            weight_text.rotate(line.get_angle())
-            weight_labels_ho.add(weight_text)
+            # Aggiungi etichetta valore peso sulla connessione
+            testo_peso = Text(f"{peso:.2f}", font_size=10, color=colore)
+            testo_peso.move_to(linea.get_center())
+            testo_peso.rotate(linea.get_angle())
+            etichette_peso_ho.add(testo_peso)
 
-        # Animate connections
+        # Anima connessioni
         self.play(
-            *[Create(conn) for conn in connections_input_hidden],
+            *[Create(conn) for conn in connessioni_input_nascosto],
             run_time=2
         )
         self.play(
-            *[FadeIn(label) for label in weight_labels_ih],
+            *[FadeIn(etichetta) for etichetta in etichette_peso_ih],
             run_time=1
         )
         self.play(
-            *[Create(conn) for conn in connections_hidden_output],
+            *[Create(conn) for conn in connessioni_nascosto_output],
             run_time=2
         )
         self.play(
-            *[FadeIn(label) for label in weight_labels_ho],
+            *[FadeIn(etichetta) for etichetta in etichette_peso_ho],
             run_time=1
         )
 
-        # Add legend
-        legend = VGroup()
-        legend_title = Text("Weight Colors:", font_size=20)
-        legend_pos = Text("Red = Positive", font_size=18, color=RED)
-        legend_neg = Text("Blue = Negative", font_size=18, color=BLUE)
-        legend_thick = Text("Thickness = Magnitude", font_size=18)
+        # Aggiungi leggenda
+        leggenda = VGroup()
+        titolo_leggenda = Text("Colori Pesi:", font_size=20)
+        leggenda_pos = Text("Rosso = Positivo", font_size=18, color=RED)
+        leggenda_neg = Text("Blu = Negativo", font_size=18, color=BLUE)
+        leggenda_spessore = Text("Spessore = Grandezza", font_size=18)
 
-        legend.add(legend_title, legend_pos, legend_neg, legend_thick)
-        legend.arrange(DOWN, aligned_edge=LEFT, buff=0.2)
-        legend.to_corner(DL)
+        leggenda.add(titolo_leggenda, leggenda_pos, leggenda_neg, leggenda_spessore)
+        leggenda.arrange(DOWN, aligned_edge=LEFT, buff=0.2)
+        leggenda.to_corner(DL)
 
-        self.play(FadeIn(legend))
+        self.play(FadeIn(leggenda))
 
-        # Add note about simplified view
-        if n_display_neurons < n_hidden_neurons:
-            note = Text(
-                f"Showing {n_display_neurons} of {n_hidden_neurons} hidden neurons",
+        # Aggiungi nota sulla vista semplificata
+        if n_neuroni_visualizzati < n_neuroni_nascosti:
+            nota = Text(
+                f"Mostrando {n_neuroni_visualizzati} di {n_neuroni_nascosti} neuroni nascosti",
                 font_size=18,
                 color=YELLOW
             )
-            note.to_corner(DR)
-            self.play(FadeIn(note))
+            nota.to_corner(DR)
+            self.play(FadeIn(nota))
         else:
-            note = Text(
-                f"Showing all {n_hidden_neurons} hidden neurons",
+            nota = Text(
+                f"Mostrando tutti i {n_neuroni_nascosti} neuroni nascosti",
                 font_size=18,
                 color=YELLOW
             )
-            note.to_corner(DR)
-            self.play(FadeIn(note))
+            nota.to_corner(DR)
+            self.play(FadeIn(nota))
 
         self.wait(2)
 
-        # Show weight statistics
-        stats = VGroup()
-        w1_mean = Text(f"W1 mean: {np.mean(W1):.4f}", font_size=20)
-        w1_std = Text(f"W1 std: {np.std(W1):.4f}", font_size=20)
-        w2_mean = Text(f"W2 mean: {np.mean(W2):.4f}", font_size=20)
-        w2_std = Text(f"W2 std: {np.std(W2):.4f}", font_size=20)
+        # Mostra statistiche pesi
+        statistiche = VGroup()
+        w1_media = Text(f"W1 media: {np.mean(W1):.4f}", font_size=20)
+        w1_dev_std = Text(f"W1 dev std: {np.std(W1):.4f}", font_size=20)
+        w2_media = Text(f"W2 media: {np.mean(W2):.4f}", font_size=20)
+        w2_dev_std = Text(f"W2 dev std: {np.std(W2):.4f}", font_size=20)
 
-        stats.add(w1_mean, w1_std, w2_mean, w2_std)
-        stats.arrange(DOWN, aligned_edge=LEFT, buff=0.15)
-        stats.to_corner(UR)
+        statistiche.add(w1_media, w1_dev_std, w2_media, w2_dev_std)
+        statistiche.arrange(DOWN, aligned_edge=LEFT, buff=0.15)
+        statistiche.to_corner(UR)
 
-        self.play(FadeIn(stats))
+        self.play(FadeIn(statistiche))
         self.wait(3)
 
-        # Fade out everything
+        # Sfuma tutto
         self.play(
             *[FadeOut(mob) for mob in self.mobjects]
         )
 
 
-class WeightHeatmap(Scene):
+class HeatmapPesi(Scene):
     def construct(self):
-        # Load the trained model weights
+        # Carica pesi modello addestrato
         try:
-            with open('model_weights.pkl', 'rb') as f:
-                weights_data = pickle.load(f)
-            W1 = weights_data['W1']  # Shape: (2, 100)
-            W2 = weights_data['W2']  # Shape: (100, 1)
+            with open('pesi_modello.pkl', 'rb') as f:
+                dati_pesi = pickle.load(f)
+            W1 = dati_pesi['W1']  # Forma: (2, 100)
+            W2 = dati_pesi['W2']  # Forma: (100, 1)
         except FileNotFoundError:
-            self.add(Text("Error: model_weights.pkl not found!", color=RED))
+            self.add(Text("Errore: pesi_modello.pkl non trovato!", color=RED))
             return
 
-        # Get actual network size
-        n_hidden_neurons = W1.shape[1]
+        # Ottieni dimensione rete reale
+        n_neuroni_nascosti = W1.shape[1]
 
-        # Title
-        title = Text("Weight Heatmaps", font_size=40)
-        title.to_edge(UP)
-        self.play(Write(title))
+        # Titolo
+        titolo = Text("Mappe di Calore Pesi", font_size=40)
+        titolo.to_edge(UP)
+        self.play(Write(titolo))
         self.wait(0.5)
 
-        # Create heatmap for W1
-        w1_title = Text(f"Input → Hidden Layer Weights (2×{n_hidden_neurons})", font_size=24)
-        w1_title.move_to(UP * 2.5 + LEFT * 3)
+        # Crea heatmap per W1
+        titolo_w1 = Text(f"Pesi Input → Strato Nascosto (2×{n_neuroni_nascosti})", font_size=24)
+        titolo_w1.move_to(UP * 2.5 + LEFT * 3)
 
-        # Normalize W1 for visualization
+        # Normalizza W1 per visualizzazione
         W1_norm = (W1 - W1.min()) / (W1.max() - W1.min())
 
-        # Create grid for W1 (show as 2 rows, n_hidden columns)
-        n_display_w1 = min(n_hidden_neurons, 50)  # Limit to 50 for visibility
-        cell_width = min(0.1, 5.0 / n_display_w1)  # Adjust width based on count
-        cell_height = 0.3
-        w1_grid = VGroup()
+        # Crea griglia per W1 (mostra come 2 righe, n_nascosti colonne)
+        n_display_w1 = min(n_neuroni_nascosti, 50)  # Limita a 50 per visibilità
+        larghezza_cella = min(0.1, 5.0 / n_display_w1)  # Aggiusta larghezza in base al conteggio
+        altezza_cella = 0.3
+        griglia_w1 = VGroup()
 
         for i in range(2):
             for j in range(n_display_w1):
-                color_value = W1_norm[i, j]
-                color = interpolate_color(BLUE, RED, color_value)
+                valore_colore = W1_norm[i, j]
+                colore = interpolate_color(BLUE, RED, valore_colore)
 
-                rect = Rectangle(
-                    width=cell_width,
-                    height=cell_height,
-                    fill_color=color,
+                rettangolo = Rectangle(
+                    width=larghezza_cella,
+                    height=altezza_cella,
+                    fill_color=colore,
                     fill_opacity=0.8,
                     stroke_width=0.5
                 )
-                rect.move_to(
+                rettangolo.move_to(
                     LEFT * 3 +
-                    RIGHT * (j * cell_width - n_display_w1 * cell_width / 2) +
-                    UP * (0.5 - i * cell_height)
+                    RIGHT * (j * larghezza_cella - n_display_w1 * larghezza_cella / 2) +
+                    UP * (0.5 - i * altezza_cella)
                 )
-                w1_grid.add(rect)
+                griglia_w1.add(rettangolo)
 
-        self.play(Write(w1_title))
-        self.play(FadeIn(w1_grid), run_time=1.5)
+        self.play(Write(titolo_w1))
+        self.play(FadeIn(griglia_w1), run_time=1.5)
 
-        # Create heatmap for W2
-        w2_title = Text(f"Hidden → Output Weights ({n_hidden_neurons}×1)", font_size=24)
-        w2_title.move_to(UP * 2.5 + RIGHT * 3)
+        # Crea heatmap per W2
+        titolo_w2 = Text(f"Pesi Nascosto → Output ({n_neuroni_nascosti}×1)", font_size=24)
+        titolo_w2.move_to(UP * 2.5 + RIGHT * 3)
 
-        # Normalize W2 for visualization
+        # Normalizza W2 per visualizzazione
         W2_norm = (W2 - W2.min()) / (W2.max() - W2.min())
 
-        # Create grid for W2 (arrange in grid pattern)
-        w2_grid = VGroup()
+        # Crea griglia per W2 (organizza in pattern griglia)
+        griglia_w2 = VGroup()
 
-        # Calculate grid dimensions (try for square-ish layout)
-        grid_cols = int(np.ceil(np.sqrt(n_hidden_neurons)))
-        grid_rows = int(np.ceil(n_hidden_neurons / grid_cols))
+        # Calcola dimensioni griglia (prova per layout quasi-quadrato)
+        colonne_griglia = int(np.ceil(np.sqrt(n_neuroni_nascosti)))
+        righe_griglia = int(np.ceil(n_neuroni_nascosti / colonne_griglia))
 
         cell_width2 = min(0.1, 2.5 / grid_cols)
         cell_height2 = min(0.1, 2.5 / grid_rows)
@@ -328,52 +328,52 @@ class WeightHeatmap(Scene):
         self.wait(3)
 
 
-class SampleCalculation(Scene):
+class CalcoloEsempio(Scene):
     def construct(self):
-        # Load the trained model weights
+        # Carica pesi modello addestrato
         try:
-            with open('model_weights.pkl', 'rb') as f:
-                weights_data = pickle.load(f)
-            W1 = weights_data['W1']  # Shape: (2, n_hidden)
-            b1 = weights_data['b1']  # Shape: (n_hidden,)
-            W2 = weights_data['W2']  # Shape: (n_hidden, 1)
-            b2 = weights_data['b2']  # Shape: (1,)
+            with open('pesi_modello.pkl', 'rb') as f:
+                dati_pesi = pickle.load(f)
+            W1 = dati_pesi['W1']  # Forma: (2, n_nascosti)
+            b1 = dati_pesi['b1']  # Forma: (n_nascosti,)
+            W2 = dati_pesi['W2']  # Forma: (n_nascosti, 1)
+            b2 = dati_pesi['b2']  # Forma: (1,)
         except FileNotFoundError:
-            self.add(Text("Error: model_weights.pkl not found!", color=RED))
+            self.add(Text("Errore: pesi_modello.pkl non trovato!", color=RED))
             return
 
         n_hidden = W1.shape[1]
 
-        # Title
-        title = Text("Sample Calculation: f(1, 2)", font_size=36)
-        title.to_edge(UP)
-        self.play(Write(title))
+        # Titolo
+        titolo = Text("Calcolo Esempio: f(1, 2)", font_size=36)
+        titolo.to_edge(UP)
+        self.play(Write(titolo))
         self.wait(0.5)
 
-        # Show expected output
-        expected = np.sqrt(1**2 + 2**2)
-        expected_text = Text(f"Expected: √(1² + 2²) = √5 ≈ {expected:.4f}", font_size=24, color=YELLOW)
-        expected_text.next_to(title, DOWN)
-        self.play(FadeIn(expected_text))
+        # Mostra output atteso
+        atteso = np.sqrt(1**2 + 2**2)
+        testo_atteso = Text(f"Atteso: √(1² + 2²) = √5 ≈ {atteso:.4f}", font_size=24, color=YELLOW)
+        testo_atteso.next_to(titolo, DOWN)
+        self.play(FadeIn(testo_atteso))
         self.wait(1)
 
-        # Step 1: Show input
-        step1_title = Text("Step 1: Input Layer", font_size=28, color=BLUE)
-        step1_title.move_to(UP * 2)
+        # Passo 1: Mostra input
+        titolo_passo1 = Text("Passo 1: Strato Input", font_size=28, color=BLUE)
+        titolo_passo1.move_to(UP * 2)
 
-        input_eq = MathTex(r"x = \begin{bmatrix} 1 \\ 2 \end{bmatrix}", font_size=40)
-        input_eq.move_to(UP * 1)
+        eq_input = MathTex(r"x = \begin{bmatrix} 1 \\ 2 \end{bmatrix}", font_size=40)
+        eq_input.move_to(UP * 1)
 
-        self.play(Write(step1_title))
-        self.play(Write(input_eq))
+        self.play(Write(titolo_passo1))
+        self.play(Write(eq_input))
         self.wait(1.5)
 
-        # Step 2: Calculate hidden layer (show first 3 neurons for clarity)
-        self.play(FadeOut(step1_title), FadeOut(input_eq))
+        # Passo 2: Calcola strato nascosto (mostra primi 3 neuroni per chiarezza)
+        self.play(FadeOut(titolo_passo1), FadeOut(eq_input))
 
-        step2_title = Text("Step 2: Hidden Layer (ReLU)", font_size=28, color=GREEN)
-        step2_title.move_to(UP * 2.5)
-        self.play(Write(step2_title))
+        titolo_passo2 = Text("Passo 2: Strato Nascosto (ReLU)", font_size=28, color=GREEN)
+        titolo_passo2.move_to(UP * 2.5)
+        self.play(Write(titolo_passo2))
 
         # Calculate z = W1^T @ x + b1
         x_input = np.array([1, 2])
@@ -417,20 +417,20 @@ class SampleCalculation(Scene):
             self.play(FadeIn(ellipsis))
             self.wait(1)
 
-        # Step 3: Output layer
-        self.play(*[FadeOut(mob) for mob in [step2_title, calc_group] + ([ellipsis] if n_hidden > show_neurons else [])])
+        # Passo 3: Strato output
+        self.play(*[FadeOut(mob) for mob in [titolo_passo2, calc_group] + ([ellipsis] if n_hidden > show_neurons else [])])
 
-        step3_title = Text("Step 3: Output Layer (Linear)", font_size=28, color=RED)
-        step3_title.move_to(UP * 2.5)
-        self.play(Write(step3_title))
+        titolo_passo3 = Text("Passo 3: Strato Output (Lineare)", font_size=28, color=RED)
+        titolo_passo3.move_to(UP * 2.5)
+        self.play(Write(titolo_passo3))
 
         # Calculate output: y = W2^T @ a + b2
         y_output = W2.T @ a_hidden + b2
         prediction = y_output[0]
 
-        # Show output calculation
-        output_text = Text("Output calculation:", font_size=20)
-        output_text.move_to(UP * 1.5)
+        # Mostra calcolo output
+        testo_output = Text("Calcolo output:", font_size=20)
+        testo_output.move_to(UP * 1.5)
 
         # Build equation showing sum of weighted activations
         sum_terms = []
@@ -454,35 +454,35 @@ class SampleCalculation(Scene):
         self.play(Write(result_text))
         self.wait(1.5)
 
-        # Comparison
-        self.play(FadeOut(step3_title), FadeOut(output_text), FadeOut(equation))
+        # Confronto
+        self.play(FadeOut(titolo_passo3), FadeOut(testo_output), FadeOut(equation))
 
-        comparison_title = Text("Comparison", font_size=32, color=PURPLE)
-        comparison_title.move_to(UP * 2)
+        titolo_confronto = Text("Confronto", font_size=32, color=PURPLE)
+        titolo_confronto.move_to(UP * 2)
 
-        pred_line = Text(f"Predicted:  {prediction:.4f}", font_size=28)
-        actual_line = Text(f"Actual:     {expected:.4f}", font_size=28)
-        error = abs(prediction - expected)
-        error_pct = (error / expected) * 100
-        error_line = Text(f"Error:      {error:.4f} ({error_pct:.2f}%)", font_size=28,
-                         color=GREEN if error_pct < 5 else YELLOW if error_pct < 10 else RED)
+        linea_pred = Text(f"Predetto:  {prediction:.4f}", font_size=28)
+        linea_reale = Text(f"Reale:     {atteso:.4f}", font_size=28)
+        errore = abs(prediction - atteso)
+        errore_pct = (errore / atteso) * 100
+        linea_errore = Text(f"Errore:      {errore:.4f} ({errore_pct:.2f}%)", font_size=28,
+                         color=GREEN if errore_pct < 5 else YELLOW if errore_pct < 10 else RED)
 
-        comparison = VGroup(pred_line, actual_line, error_line)
-        comparison.arrange(DOWN, aligned_edge=LEFT, buff=0.3)
-        comparison.move_to(ORIGIN)
+        confronto = VGroup(linea_pred, linea_reale, linea_errore)
+        confronto.arrange(DOWN, aligned_edge=LEFT, buff=0.3)
+        confronto.move_to(ORIGIN)
 
         self.play(FadeOut(result_text))
-        self.play(Write(comparison_title))
-        self.play(*[Write(line) for line in comparison])
+        self.play(Write(titolo_confronto))
+        self.play(*[Write(linea) for linea in confronto])
         self.wait(3)
 
-        # Final message
-        if error_pct < 5:
-            msg = Text("Excellent prediction! ✓", font_size=24, color=GREEN)
-        elif error_pct < 10:
-            msg = Text("Good prediction", font_size=24, color=YELLOW)
+        # Messaggio finale
+        if errore_pct < 5:
+            msg = Text("Predizione eccellente! ✓", font_size=24, color=GREEN)
+        elif errore_pct < 10:
+            msg = Text("Buona predizione", font_size=24, color=YELLOW)
         else:
-            msg = Text("Needs more training", font_size=24, color=RED)
+            msg = Text("Ha bisogno di più addestramento", font_size=24, color=RED)
 
         msg.to_edge(DOWN)
         self.play(FadeIn(msg))
@@ -490,5 +490,5 @@ class SampleCalculation(Scene):
 
 
 if __name__ == "__main__":
-    # This allows running with: python animate_weights.py
+    # Questo permette l'esecuzione con: python animate_weights.py
     pass
