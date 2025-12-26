@@ -58,12 +58,19 @@ class TriangoliRettangoli(Scene):
             self.play(Create(triangolo), run_time=1.5)
             self.wait(0.5)
 
+        # Crea indicatore epoca persistente
+        testo_epoca = Text("Epoca 1", font_size=28, color=YELLOW)
+        testo_epoca.next_to(rete_neurale, DOWN, buff=0.5)
+        self.play(Write(testo_epoca), run_time=0.5)
+        self.wait(0.5)
+
         for epoch in [1, 10, 75]:
-            # Mostra indicatore epoca sotto la rete neurale
-            testo_epoca = Text(f"Epoca {epoch}", font_size=28, color=YELLOW)
-            testo_epoca.next_to(rete_neurale, DOWN, buff=0.5)
-            self.play(Write(testo_epoca), run_time=0.5)
-            self.wait(0.5)
+            # Aggiorna indicatore epoca
+            if epoch != 1:  # Non aggiornare per la prima epoca (già mostrata)
+                nuovo_testo_epoca = Text(f"Epoca {epoch}", font_size=28, color=YELLOW)
+                nuovo_testo_epoca.next_to(rete_neurale, DOWN, buff=0.5)
+                self.play(Transform(testo_epoca, nuovo_testo_epoca), run_time=0.5)
+                self.wait(0.5)
 
             # Carica predizioni NN epoca 1
             ipotenuse_predette = self.ottieni_predizioni_nn(dati_triangoli, epoch)
@@ -172,8 +179,7 @@ class TriangoliRettangoli(Scene):
             if testo_errore_medio is not None:
                 animazioni_pulizia.append(FadeOut(testo_errore_medio))
 
-            # Nascondi il testo epoca
-            animazioni_pulizia.append(FadeOut(testo_epoca))
+            # Mantieni il testo epoca visibile per la prossima iterazione
 
             self.play(*animazioni_pulizia, run_time=0.5)
             self.wait(0.5)
