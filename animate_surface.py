@@ -5,7 +5,7 @@ import pickle
 class SuperficieNNEvoluzioneSemplice(ThreeDScene):
     """
     Anima l'apprendimento della rete neurale per approssimare f(a,b) = sqrt(a^2 + b^2)
-    Mostra progressione attraverso epoche 1, 3, 10, 30, 50 con animazione morphing fluida.
+    Mostra progressione attraverso epoche 1, 3, 10, 30, 75 con animazione morphing fluida.
     """
 
     def construct(self):
@@ -18,8 +18,8 @@ class SuperficieNNEvoluzioneSemplice(ThreeDScene):
         Z_reale = dati['Z_actual']
         tutte_epoche = sorted(dati['epochs'].keys())
 
-        # Seleziona epoche specifiche da mostrare: 1, 3, 10, 30, 50
-        epoche_target = [1, 3, 10, 30, 50]
+        # Seleziona epoche specifiche da mostrare
+        epoche_target = [1, 3, 10, 30, 75]
         # Filtra per includere solo epoche che esistono nei dati
         epoche = [e for e in epoche_target if e in tutte_epoche]
 
@@ -139,6 +139,54 @@ class SuperficieNNEvoluzioneSemplice(ThreeDScene):
         self.wait(2)  # Pausa più lunga per vedere approssimazione iniziale scadente
 
         for i in range(1, len(superfici)):
+            # Prima di transizione, evidenzia lo spazio tra le superfici in rosso
+            epoca_corrente = superfici[i-1][0]
+            Z_corrente = dati['epochs'][epoca_corrente]
+
+            # Crea superficie dello spazio di errore (riempimento tra superficie_reale e superficie_corrente)
+            def crea_superficie_errore(Z_pred, Z_real, a_r, b_r, z_scl):
+                def funz_errore(u, v):
+                    # Interpolazione bilineare per Z_pred
+                    x_idx = u * (len(a_r) - 1)
+                    y_idx = v * (len(b_r) - 1)
+
+                    x0, x1 = int(x_idx), min(int(x_idx) + 1, len(a_r) - 1)
+                    y0, y1 = int(y_idx), min(int(y_idx) + 1, len(b_r) - 1)
+
+                    fx, fy = x_idx - x0, y_idx - y0
+
+                    z_pred = (1-fx)*(1-fy)*Z_pred[y0,x0] + fx*(1-fy)*Z_pred[y0,x1] + \
+                            (1-fx)*fy*Z_pred[y1,x0] + fx*fy*Z_pred[y1,x1]
+
+                    z_real = (1-fx)*(1-fy)*Z_real[y0,x0] + fx*(1-fy)*Z_real[y0,x1] + \
+                            (1-fx)*fy*Z_real[y1,x0] + fx*fy*Z_real[y1,x1]
+
+                    # Usa il punto medio tra le due superfici
+                    z_medio = (z_pred + z_real) / 2
+
+                    a = a_r[0] + u * (a_r[-1] - a_r[0])
+                    b = b_r[0] + v * (b_r[-1] - b_r[0])
+                    return np.array([a * scala_xy, b * scala_xy, z_medio * z_scl])
+                return funz_errore
+
+            superficie_errore = Surface(
+                crea_superficie_errore(Z_corrente, Z_reale, range_a, range_b, scala_z),
+                u_range=[0, 1],
+                v_range=[0, 1],
+                resolution=(30, 30),
+                fill_opacity=0.6,
+                stroke_width=0,
+                fill_color=RED,
+                shade_in_3d=True
+            )
+
+            # Mostra superficie errore con fade in
+            self.play(FadeIn(superficie_errore), run_time=1)
+            self.wait(1.5)
+
+            # Rimuovi superficie errore prima del morphing
+            self.play(FadeOut(superficie_errore), run_time=0.5)
+
             epoca, superficie_prossima = superfici[i]
             nuova_etichetta = Text(f"Epoca {epoca}", font_size=32, color=YELLOW).to_corner(UP + LEFT)
 
