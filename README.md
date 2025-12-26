@@ -4,6 +4,10 @@ Questo progetto implementa una rete neurale feedforward per apprendere il teorem
 
 Utilizza TensorFlow/Keras per l'addestramento, Plotly per la visualizzazione 3D interattiva e Manim per animazioni professionali che mostrano il processo di apprendimento.
 
+![Animazione Pedagogica](TriangoliRettangoli%20-%20Copia_processed_by_imagy.gif)
+
+*Visualizzazione animata del processo di apprendimento: la rete neurale impara a predire l'ipotenusa di triangoli rettangoli attraverso le epoche di addestramento (1, 10, 75).*
+
 ## Architettura
 - **Strato di Input**: 2 neuroni (a, b)
 - **Strato Nascosto**: Neuroni configurabili con attivazione ReLU (default: 30)
