@@ -1,21 +1,67 @@
 from keras.models import Sequential
-from keras.layers import Dense
+from keras.layers import Dense, Input
 from keras.utils import plot_model
+from keras.optimizers import Adam
 import numpy as np
 import matplotlib.pyplot as plt
 import random
+import optuna
+from optuna.visualization import plot_optimization_history, plot_param_importances
+import tensorflow as tf
+
+# Configura GPU se disponibile
+print("\n" + "="*70)
+print("CONFIGURAZIONE GPU")
+print("="*70)
+
+# Lista dispositivi disponibili
+physical_devices = tf.config.list_physical_devices()
+print(f"Dispositivi fisici disponibili: {len(physical_devices)}")
+for device in physical_devices:
+    print(f"  - {device.device_type}: {device.name}")
+
+# Verifica GPU
+gpus = tf.config.list_physical_devices('GPU')
+if gpus:
+    try:
+        # Abilita memory growth per evitare di allocare tutta la memoria GPU
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+
+        print(f"\n✓ GPU DISPONIBILE: {len(gpus)} dispositivo/i GPU trovato/i")
+        for i, gpu in enumerate(gpus):
+            print(f"  GPU {i}: {gpu.name}")
+
+        # Imposta la GPU come dispositivo predefinito
+        logical_gpus = tf.config.list_logical_devices('GPU')
+        print(f"  Dispositivi logici GPU: {len(logical_gpus)}")
+
+    except RuntimeError as e:
+        print(f"Errore nella configurazione GPU: {e}")
+else:
+    print("\n✗ Nessuna GPU trovata. Utilizzo CPU.")
+
+print("="*70 + "\n")
 
 random.seed(1809)
 np.random.seed(1809)
+tf.random.set_seed(1809)
 
-model = Sequential(
-    [
-        Dense(50, activation="relu", input_dim=2, name="Strato_interno"),
-        Dense(1, activation="linear", name="Output_ipotenusa"),
-    ]
-)
 
-print(model.summary())
+def modello_pitagora(num_neuroni, learning_rate=0.001):
+    model = Sequential(
+        [
+            Input(shape=(2,)),
+            Dense(num_neuroni, activation="relu", name="Strato_interno"),
+            Dense(1, activation="linear", name="Output_ipotenusa"),
+        ]
+    )
+    model.compile(
+        optimizer=Adam(learning_rate=learning_rate),
+        loss="mse",
+        metrics=["mae"],
+    )
+    return model
 
 
 def print_model_weights(model):
@@ -29,68 +75,344 @@ def print_model_weights(model):
             model, to_file="modello.png", show_shapes=True, show_layer_names=True
         )
 
+def get_samples(n_samples = 10000):
+    # Genera dati di training
+    cateto1 = np.random.uniform(1, 10, n_samples)  # Cateto A: 1-10
+    cateto2 = np.random.uniform(1, 10, n_samples)  # Cateto B: 1-10
+    ipotenusa = np.sqrt(cateto1**2 + cateto2**2)  # Target esatto
 
-print_model_weights(model)
+    X_train = np.column_stack((cateto1, cateto2))  # Input (3000, 2)
+    y_train = ipotenusa.reshape(-1, 1)  # Output (3000, 1)
+    return X_train, y_train
 
-n_samples = 3000  # Numero esempi
-cateto1 = np.random.uniform(1, 10, n_samples)  # Cateto A: 1-10
-cateto2 = np.random.uniform(1, 10, n_samples)  # Cateto B: 1-10
-ipotenusa = np.sqrt(cateto1**2 + cateto2**2)  # Target esatto
-
-X_train = np.column_stack((cateto1, cateto2))  # Input (10000, 2)
-y_train = ipotenusa.reshape(-1, 1)  # Output (10000, 1)
-
+X_train, y_train = get_samples(10000)
 
 def Test_Pitagora(model):
     # Esempio: cateti 3 e 4 → ipotenusa ~5
     input_test = np.array([[3.0, 4.0], [6.0, 8.0]])
-    risultati = model.predict(input_test)
+    risultati = model.predict(input_test, verbose=0)
     for i, risultato in enumerate(risultati):
-        print(f"Ipotenusa di {input_test[i][0]} e {input_test[i][1]}: {risultato[0]:.4f}")
-    
+        print(
+            f"Ipotenusa di {input_test[i][0]} e {input_test[i][1]}: {risultato[0]:.4f}"
+        )
+
     return risultati
 
 
+def objective(trial):
+    """Funzione obiettivo per Optuna: ottimizza iperparametri della rete neurale."""
+
+    # Suggerisci iperparametri da testare
+    num_neuroni = trial.suggest_int("num_neuroni", 5, 100, step=5)
+    learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-2, log=True)
+    num_samples = trial.suggest_int("num_samples", 500, 10000, log=True)
+    # Crea e compila il modello
+    model = modello_pitagora(num_neuroni, learning_rate)
+    X_train, y_train = get_samples(num_samples)
+    # Addestra il modello
+    history = model.fit(
+        X_train,
+        y_train,
+        epochs=100,  # Ridotto per velocizzare l'ottimizzazione
+        batch_size=32,
+        validation_split=0.2,
+        verbose=0,  # Silenzioso per non intasare l'output
+        shuffle=True,
+    )
+
+    return history.history["val_loss"][-1]
 
 
-model.compile(
-    optimizer="adam",  # Ottimizzatore adattivo (buono per iniziare)
-    loss="mse",  # Mean Squared Error per regressione
-    metrics=["mae"],  # Mean Absolute Error per monitorare
-)
+def objective_learning_rate(trial):
+    """Fase 1: Ottimizza solo il learning rate con parametri fissi."""
+    learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-2, log=True)
 
-history = model.fit(
-    X_train,
-    y_train,  # Dati generati (1000 esempi)
-    epochs=300,  # Iterazioni complete sui dati
-    batch_size=32,  # Mini-batch per stabilità
-    validation_split=0.2,  # 20% per validazione automatica
-    verbose=1,  # Mostra barra progresso
-    shuffle=True,  # Mescola dati (riproducibile con seed)
-)
+    # Parametri fissi per questa fase
+    num_neuroni = 50
+    num_samples = 5000
 
-Test_Pitagora(model)
+    model = modello_pitagora(num_neuroni, learning_rate)
+    X_train, y_train = get_samples(num_samples)
 
-print_model_weights(model)
+    history = model.fit(
+        X_train,
+        y_train,
+        epochs=100,
+        batch_size=32,  # Fisso a 16 (mini-batch gradient descent)
+        validation_split=0.2,
+        verbose=0,
+        shuffle=True,
+    )
 
-model.save("Rete_Pitagora.keras")
-print ("Modello salvato!")
+    return history.history["val_loss"][-1]
 
-# Dopo training e history = model.fit(...)
-fig = plt.figure(figsize=(15, 5))
 
-# 1. Loss per Epoch
-plt.plot(history.history['loss'], label='Training Loss', linewidth=2)
-plt.plot(history.history['val_loss'], label='Validation Loss', linewidth=2)
-plt.title('Loss per Epoch')
-plt.xlabel('Epoch')
-plt.ylabel('MSE')
-plt.yscale('log')  # ← Scala log Y per valori piccoli
-plt.legend()
-plt.grid(True, alpha=0.3)
-# limit y-axis to better visualize
-plt.ylim(0, 5)
+def objective_with_best_lr(trial, best_learning_rate):
+    """Fase 2: Ottimizza altri parametri con il miglior learning rate."""
+    num_neuroni = trial.suggest_int("num_neuroni", 5, 100, step=5)
+    num_samples = trial.suggest_int("num_samples", 500, 10000, log=True)
 
-plt.tight_layout()
-plt.savefig('rete_35neuroni.png', dpi=200, bbox_inches='tight')
-plt.show()
+    # Usa il learning rate ottimizzato dalla fase 1
+    model = modello_pitagora(num_neuroni, best_learning_rate)
+    X_train, y_train = get_samples(num_samples)
+
+    history = model.fit(
+        X_train,
+        y_train,
+        epochs=100,
+        batch_size=32,  # Fisso a 16 (mini-batch gradient descent)
+        validation_split=0.2,
+        verbose=0,
+        shuffle=True,
+    )
+
+    return history.history["val_loss"][-1]
+
+
+def ottimizza_iperparametri(n_trials_lr=20, n_trials_other=30, sequential=True):
+    """Esegue l'ottimizzazione degli iperparametri con Optuna.
+
+    Args:
+        n_trials_lr: Numero di trial per ottimizzare il learning rate (fase 1)
+        n_trials_other: Numero di trial per ottimizzare altri parametri (fase 2)
+        sequential: Se True, ottimizza prima LR poi altri. Se False, ottimizza tutto insieme.
+    """
+
+    if sequential:
+        # FASE 1: Ottimizza Learning Rate
+        print("\n" + "="*70)
+        print("FASE 1: OTTIMIZZAZIONE LEARNING RATE")
+        print("="*70)
+        print(f"Numero di trial: {n_trials_lr}")
+        print("Parametri fissi:")
+        print("  - num_neuroni: 50")
+        print("  - num_samples: 5000")
+        print("  - batch_size: 16 (mini-batch)")
+        print("\nParametro da ottimizzare:")
+        print("  - learning_rate: [1e-5, 1e-2] (scala log)")
+        print("="*70 + "\n")
+
+        study_lr = optuna.create_study(
+            direction="minimize",
+            study_name="phase1_learning_rate",
+            sampler=optuna.samplers.TPESampler(seed=1809)
+        )
+
+        study_lr.optimize(objective_learning_rate, n_trials=n_trials_lr, show_progress_bar=True)
+
+        best_lr = study_lr.best_params["learning_rate"]
+
+        print("\n" + "="*70)
+        print("RISULTATI FASE 1")
+        print("="*70)
+        print(f"Miglior validation loss: {study_lr.best_value:.6f}")
+        print(f"Miglior learning rate: {best_lr:.6f}")
+        print("="*70 + "\n")
+
+        # FASE 2: Ottimizza altri parametri con il miglior LR
+        print("\n" + "="*70)
+        print("FASE 2: OTTIMIZZAZIONE ALTRI PARAMETRI")
+        print("="*70)
+        print(f"Numero di trial: {n_trials_other}")
+        print(f"Learning rate fisso (ottimizzato): {best_lr:.6f}")
+        print("\nParametri da ottimizzare:")
+        print("  - num_neuroni: [5, 10, 15, ..., 100]")
+        print("  - num_samples: [500, 10000] (scala log)")
+        print("\nParametro fisso:")
+        print("  - batch_size: 16 (mini-batch)")
+        print("="*70 + "\n")
+
+        study_other = optuna.create_study(
+            direction="minimize",
+            study_name="phase2_other_params",
+            sampler=optuna.samplers.TPESampler(seed=1809)
+        )
+
+        # Crea funzione obiettivo con LR fisso
+        def objective_wrapper(trial):
+            return objective_with_best_lr(trial, best_lr)
+
+        study_other.optimize(objective_wrapper, n_trials=n_trials_other, show_progress_bar=True)
+
+        print("\n" + "="*70)
+        print("RISULTATI FASE 2")
+        print("="*70)
+        print(f"Miglior validation loss: {study_other.best_value:.6f}")
+        print("\nMigliori iperparametri trovati:")
+        print(f"  learning_rate: {best_lr:.6f} (da Fase 1)")
+        for param, value in study_other.best_params.items():
+            print(f"  {param}: {value}")
+        print("="*70 + "\n")
+
+        # Combina i risultati
+        best_params = study_other.best_params.copy()
+        best_params["learning_rate"] = best_lr
+
+        # Salva visualizzazioni
+        try:
+            fig1_lr = plot_optimization_history(study_lr)
+            fig1_lr.write_html("optuna_phase1_lr_history.html")
+            print("Salvato: optuna_phase1_lr_history.html")
+
+            fig2_other = plot_optimization_history(study_other)
+            fig2_other.write_html("optuna_phase2_other_history.html")
+            print("Salvato: optuna_phase2_other_history.html")
+
+            fig3_importance = plot_param_importances(study_other)
+            fig3_importance.write_html("optuna_param_importances.html")
+            print("Salvato: optuna_param_importances.html")
+        except Exception as e:
+            print(f"Errore nel salvare le visualizzazioni: {e}")
+
+        # Crea un oggetto simile a study per compatibilità
+        class CombinedStudy:
+            def __init__(self, best_params, best_value):
+                self.best_params = best_params
+                self.best_value = best_value
+
+        return CombinedStudy(best_params, study_other.best_value)
+
+    else:
+        # Ottimizzazione simultanea (metodo originale)
+        print("\n" + "="*70)
+        print("OTTIMIZZAZIONE SIMULTANEA IPERPARAMETRI")
+        print("="*70)
+        print(f"Numero di trial: {n_trials_lr + n_trials_other}")
+        print("Iperparametri da ottimizzare:")
+        print("  - num_neuroni: [5, 10, 15, ..., 100]")
+        print("  - learning_rate: [1e-5, 1e-2] (scala log)")
+        print("  - num_samples: [500, 10000] (scala log)")
+        print("="*70 + "\n")
+
+        study = optuna.create_study(
+            direction="minimize",
+            study_name="pythagorean_nn_optimization",
+            sampler=optuna.samplers.TPESampler(seed=1809)
+        )
+
+        study.optimize(objective, n_trials=n_trials_lr + n_trials_other, show_progress_bar=True)
+
+        print("\n" + "="*70)
+        print("RISULTATI OTTIMIZZAZIONE")
+        print("="*70)
+        print(f"Miglior validation loss: {study.best_value:.6f}")
+        print("\nMigliori iperparametri trovati:")
+        for param, value in study.best_params.items():
+            print(f"  {param}: {value}")
+        print("="*70 + "\n")
+
+        try:
+            fig1 = plot_optimization_history(study)
+            fig1.write_html("optuna_optimization_history.html")
+            print("Salvato: optuna_optimization_history.html")
+
+            fig2 = plot_param_importances(study)
+            fig2.write_html("optuna_param_importances.html")
+            print("Salvato: optuna_param_importances.html")
+        except Exception as e:
+            print(f"Errore nel salvare le visualizzazioni: {e}")
+
+        return study
+
+
+def addestra_modello_finale(num_neuroni, learning_rate, epochs=300, num_samples=10000):
+    """Addestra il modello finale con i migliori iperparametri."""
+    print("\n" + "="*70)
+    print("ADDESTRAMENTO MODELLO FINALE")
+    print("="*70)
+    print(f"num_neuroni: {num_neuroni}")
+    print(f"learning_rate: {learning_rate}")
+    print(f"batch_size: 16 (mini-batch)")
+    print(f"num_samples: {num_samples}")
+    print(f"epochs: {epochs}")
+    print("="*70 + "\n")
+
+    model = modello_pitagora(num_neuroni, learning_rate)
+
+    print(model.summary())
+
+    # Usa i campioni ottimizzati
+    X_train_final, y_train_final = get_samples(num_samples)
+
+    history = model.fit(
+        X_train_final,
+        y_train_final,
+        epochs=epochs,
+        batch_size=32,  # Fisso a 16 (mini-batch gradient descent)
+        validation_split=0.2,
+        verbose=1,
+        shuffle=True,
+    )
+
+    # Test del modello
+    print("\n" + "="*70)
+    print("TEST DEL MODELLO")
+    print("="*70)
+    Test_Pitagora(model)
+    print("="*70 + "\n")
+
+    # Salva modello
+    model.save("Rete_Pitagora.keras")
+    print("Modello salvato in: Rete_Pitagora.keras\n")
+
+    # Visualizza pesi finali
+    print_model_weights(model)
+
+    # Grafico loss
+    fig = plt.figure(figsize=(15, 5))
+    plt.plot(history.history["loss"], label="Training Loss", linewidth=2)
+    plt.plot(history.history["val_loss"], label="Validation Loss", linewidth=2)
+    plt.title(f"Loss per Epoch (neuroni={num_neuroni}, lr={learning_rate:.6f})")
+    plt.xlabel("Epoch")
+    plt.ylabel("MSE")
+    plt.yscale("log")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.ylim(0, 5)
+    plt.tight_layout()
+    plt.savefig("rete_ottimizzata.png", dpi=200, bbox_inches="tight")
+    print("Grafico salvato in: rete_ottimizzata.png\n")
+    plt.show()
+
+    return model, history
+
+
+if __name__ == "__main__":
+    # Configurazione ottimizzazione
+    USE_OPTUNA = True  # Imposta False per usare parametri predefiniti
+    SEQUENTIAL_OPTIMIZATION = True  # True: ottimizza prima LR poi altri; False: tutto insieme
+
+    if USE_OPTUNA:
+        # Esegui ottimizzazione
+        if SEQUENTIAL_OPTIMIZATION:
+            # Ottimizzazione sequenziale: prima LR, poi altri parametri
+            study = ottimizza_iperparametri(
+                n_trials_lr=20,      # Trial per learning rate
+                n_trials_other=30,   # Trial per altri parametri
+                sequential=True
+            )
+        else:
+            # Ottimizzazione simultanea di tutti i parametri
+            study = ottimizza_iperparametri(
+                n_trials_lr=25,
+                n_trials_other=25,
+                sequential=False
+            )
+
+        # Usa i migliori parametri trovati
+        best_params = study.best_params
+        model, history = addestra_modello_finale(
+            num_neuroni=best_params["num_neuroni"],
+            learning_rate=best_params["learning_rate"],
+            num_samples=best_params.get("num_samples", 10000),
+            epochs=100
+        )
+    else:
+        # Modalità 2: Usa parametri predefiniti (veloce)
+        print("Usando parametri predefiniti (salta ottimizzazione)...\n")
+        model, history = addestra_modello_finale(
+            num_neuroni=50,
+            learning_rate=0.001,
+            num_samples=10000,
+            epochs=300
+        )
