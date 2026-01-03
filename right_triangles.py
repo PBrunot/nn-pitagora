@@ -717,11 +717,11 @@ class TriangoliRettangoli(Scene):
         # Mostra trasformazioni
         self.play(*animazioni_trasformazione, run_time=1.5)
 
-        # Aggiungi visualizzazione errore medio
+        # Aggiungi visualizzazione errore medio sulla sinistra
         testo_errore_medio = Text(
             f"Errore Medio: {errore_medio_pct:.1f}%", font_size=32, color=RED
         )
-        testo_errore_medio.to_edge(DOWN, buff=0.5)
+        testo_errore_medio.to_corner(DL, buff=0.5)
 
         self.play(Write(testo_errore_medio), run_time=1)
         self.wait(2)
@@ -731,151 +731,128 @@ class TriangoliRettangoli(Scene):
 
     def mostra_matrici_pesi_finali(self, modello_finale):
         """
-        Mostra le matrici di pesi e bias finali del modello addestrato in formato migliorato.
-        
+        Mostra le matrici di pesi e bias finali del modello addestrato in formato semplice e leggibile.
+
         Args:
             modello_finale: Modello Keras addestrato della epoch finale
-            
-        Returns:
-            VGroup contenente tutte le matrici visualizzate
         """
         if modello_finale is None:
             print("Nessun modello finale disponibile per mostrare i pesi")
-            return VGroup()
-            
+            return
+
         # Estrai pesi e bias dal modello
         weights = modello_finale.get_weights()
         W1 = weights[0]  # Pesi input -> hidden: shape (2, n_hidden)
         b1 = weights[1]  # Bias hidden layer: shape (n_hidden,)
         W2 = weights[2]  # Pesi hidden -> output: shape (n_hidden, 1)
         b2 = weights[3]  # Bias output layer: shape (1,)
-        
+
+        n_hidden = W1.shape[1]
+
         # Nascondi tutti gli elementi correnti
         self.play(*[FadeOut(mob) for mob in self.mobjects], run_time=1)
-        
-        # Crea titolo più prominente
-        titolo = Text("Matrici di Pesi e Bias del Modello Addestrato", 
-                     font_size=40, color=YELLOW)
-        titolo.to_edge(UP, buff=0.3)
-        self.play(Write(titolo), run_time=1.5)
-        
-        # SEZIONE 1: W1 Matrix (Input → Hidden) - Mostra 20 elementi (2x10)
-        etichetta_w1 = Text("Pesi Input → Hidden Layer:", 
-                           font_size=28, color=BLUE)
-        etichetta_w1.move_to(UP * 2.2)
-        
-        # Mostra almeno 10 elementi per W1 (2 x 10) per migliore spacing
-        n_cols_mostrare_w1 = min(10, W1.shape[1])
-        elementi_w1 = []
-        for i in range(W1.shape[0]):  # 2 righe
-            riga = []
-            for j in range(n_cols_mostrare_w1):
-                valore = f"{W1[i,j]:.2f}"
-                riga.append(valore)
-            if W1.shape[1] > n_cols_mostrare_w1:
-                riga.append("⋯")
-            elementi_w1.append(riga)
-        
-        matrice_w1 = Matrix(
-            elementi_w1, 
-            h_buff=0.6, 
-            v_buff=0.4,
-            element_to_mobject_config={"font_size": 20}
-        )
-        matrice_w1.set_color(BLUE)
-        matrice_w1.next_to(etichetta_w1, DOWN, buff=0.2)
-        
-        desc_w1 = Text(f"W₁ shape: {W1.shape[0]} × {W1.shape[1]} (mostrando {n_cols_mostrare_w1} di {W1.shape[1]} colonne)", 
-                      font_size=20, color=GRAY)
-        desc_w1.next_to(matrice_w1, DOWN, buff=0.1)
-        
-        gruppo_w1 = VGroup(etichetta_w1, matrice_w1, desc_w1)
-        
-        # SEZIONE 2: Bias e W2 affiancati nella parte inferiore
-        # Bias b1 - Mostra 12 elementi
-        etichetta_b1 = Text("Bias Hidden Layer:", 
-                           font_size=24, color=BLUE)
-        
-        n_bias_mostrare = min(12, len(b1))
-        # Disponi i bias in 3 righe x 4 colonne per migliore spacing
-        elementi_b1 = []
-        righe_bias = 3
-        cols_bias = 4
-        for r in range(righe_bias):
-            riga = []
-            for c in range(cols_bias):
-                idx = r * cols_bias + c
-                if idx < n_bias_mostrare:
-                    riga.append(f"{b1[idx]:.2f}")
-                else:
-                    riga.append("")
-            if any(riga):  # Solo se la riga non è vuota
-                elementi_b1.append(riga)
-        if len(b1) > n_bias_mostrare:
-            elementi_b1.append(["⋯", "⋯", "⋯", "⋯"])
-        
-        matrice_b1 = Matrix(
-            elementi_b1, 
-            h_buff=0.5, 
-            v_buff=0.3,
-            element_to_mobject_config={"font_size": 18}
-        )
-        matrice_b1.set_color(BLUE)
-        
-        desc_b1 = Text(f"b₁ shape: {len(b1)} elementi (mostrando {n_bias_mostrare})", 
-                      font_size=18, color=GRAY)
-        
-        gruppo_b1 = VGroup(etichetta_b1, matrice_b1, desc_b1)
-        gruppo_b1.arrange(DOWN, buff=0.1)
-        
-        # W2 Matrix (Hidden → Output) - Mostra 12 elementi
-        etichetta_w2 = Text("Pesi Hidden → Output:", 
-                           font_size=24, color=GREEN)
-        
-        n_righe_mostrare_w2 = min(12, W2.shape[0])
-        elementi_w2 = [[f"{W2[i,0]:.2f}"] for i in range(n_righe_mostrare_w2)]
-        if W2.shape[0] > n_righe_mostrare_w2:
-            elementi_w2.append(["⋮"])
-            
-        matrice_w2 = Matrix(
-            elementi_w2, 
-            h_buff=0.4, 
-            v_buff=0.3,
-            element_to_mobject_config={"font_size": 18}
-        )
-        matrice_w2.set_color(GREEN)
-        
-        desc_w2 = Text(f"W₂ shape: {W2.shape[0]} × 1 (mostrando {n_righe_mostrare_w2} righe)", 
-                      font_size=18, color=GRAY)
-        
-        # Output bias
-        elemento_b2 = f"b₂ = {b2[0]:.3f}"
-        etichetta_b2 = Text("Bias Output:", font_size=24, color=GREEN)
-        valore_b2 = Text(elemento_b2, font_size=28, color=GREEN)
-        
-        gruppo_w2 = VGroup(etichetta_w2, matrice_w2, desc_w2)
-        gruppo_w2.arrange(DOWN, buff=0.1)
-        
-        gruppo_bias_output = VGroup(etichetta_b2, valore_b2)
-        gruppo_bias_output.arrange(DOWN, buff=0.1)
-        
-        # Organizza layout nella parte inferiore
-        sezione_inferiore = VGroup(gruppo_b1, gruppo_w2, gruppo_bias_output)
-        sezione_inferiore.arrange(RIGHT, buff=1.0)
-        sezione_inferiore.move_to(DOWN * 1.2)
-        
-        # Animazioni sequenziali
-        self.play(Write(gruppo_w1), run_time=2)
-        self.wait(1)
-        
-        self.play(Write(gruppo_b1), run_time=1.5)
+
+        # Titolo principale
+        titolo = Text("Pesi e Bias del Modello Finale", font_size=36, color=YELLOW)
+        titolo.to_edge(UP)
+        self.play(Write(titolo), run_time=1)
         self.wait(0.5)
-        
-        self.play(Write(gruppo_w2), run_time=1.5)
-        self.wait(0.5)
-        
-        self.play(Write(gruppo_bias_output), run_time=1)
-        self.wait(1)
-        
-        # Formula finale migliorata e più leggibile
+
+        # SCHERMATA 1: Matrice W1 e vettore b1 (strato nascosto)
+        titolo_hidden = Text("Strato Nascosto (Input → Hidden)", font_size=28, color=GREEN)
+        titolo_hidden.move_to(UP * 2.5)
+        self.play(Write(titolo_hidden), run_time=0.5)
+
+        # Crea rappresentazione matrice W1
+        titolo_w1 = Text(f"Matrice W1 (2 × {n_hidden})", font_size=24)
+        titolo_w1.move_to(UP * 1.8 + LEFT * 3)
+
+        # Costruisci la matrice W1 come testo matematico (mostra prime e ultime colonne)
+        max_show_cols = 6
+        if n_hidden <= max_show_cols:
+            w1_rows = []
+            for i in range(2):
+                row_vals = [f"{W1[i,j]:.2f}" for j in range(n_hidden)]
+                w1_rows.append(" & ".join(row_vals))
+            w1_matrix_str = r"\begin{bmatrix}" + r" \\ ".join(w1_rows) + r"\end{bmatrix}"
+        else:
+            show_first = 3
+            show_last = 2
+            w1_rows = []
+            for i in range(2):
+                row_vals = [f"{W1[i,j]:.2f}" for j in range(show_first)]
+                row_vals.append(r"\cdots")
+                row_vals.extend([f"{W1[i,j]:.2f}" for j in range(n_hidden-show_last, n_hidden)])
+                w1_rows.append(" & ".join(row_vals))
+            w1_matrix_str = r"\begin{bmatrix}" + r" \\ ".join(w1_rows) + r"\end{bmatrix}"
+
+        w1_matrix = MathTex(w1_matrix_str, font_size=24)
+        w1_matrix.next_to(titolo_w1, DOWN, buff=0.3)
+        w1_matrix.shift(LEFT * 3)
+
+        # Crea rappresentazione vettore b1
+        titolo_b1 = Text(f"Vettore b1 ({n_hidden})", font_size=24)
+        titolo_b1.move_to(UP * 1.8 + RIGHT * 3)
+
+        if n_hidden <= max_show_cols:
+            b1_vals = [f"{b1[j]:.2f}" for j in range(n_hidden)]
+            b1_vector_str = r"\begin{bmatrix}" + r" \\ ".join(b1_vals) + r"\end{bmatrix}"
+        else:
+            show_first = 3
+            show_last = 2
+            b1_vals = [f"{b1[j]:.2f}" for j in range(show_first)]
+            b1_vals.append(r"\vdots")
+            b1_vals.extend([f"{b1[j]:.2f}" for j in range(n_hidden-show_last, n_hidden)])
+            b1_vector_str = r"\begin{bmatrix}" + r" \\ ".join(b1_vals) + r"\end{bmatrix}"
+
+        b1_vector = MathTex(b1_vector_str, font_size=24)
+        b1_vector.next_to(titolo_b1, DOWN, buff=0.3)
+        b1_vector.shift(RIGHT * 3)
+
+        self.play(Write(titolo_w1), Write(titolo_b1))
+        self.play(FadeIn(w1_matrix), FadeIn(b1_vector))
+        self.wait(3)
+
+        # SCHERMATA 2: Matrice W2 e scalare b2 (strato output)
+        self.play(
+            FadeOut(titolo_hidden), FadeOut(titolo_w1), FadeOut(titolo_b1),
+            FadeOut(w1_matrix), FadeOut(b1_vector)
+        )
+
+        titolo_output = Text("Strato Output (Hidden → Output)", font_size=28, color=RED)
+        titolo_output.move_to(UP * 2.5)
+        self.play(Write(titolo_output), run_time=0.5)
+
+        # Crea rappresentazione matrice W2
+        titolo_w2 = Text(f"Matrice W2 ({n_hidden} × 1)", font_size=24)
+        titolo_w2.move_to(UP * 1.8 + LEFT * 3)
+
+        if n_hidden <= max_show_cols:
+            w2_vals = [f"{W2[j,0]:.2f}" for j in range(n_hidden)]
+            w2_matrix_str = r"\begin{bmatrix}" + r" \\ ".join(w2_vals) + r"\end{bmatrix}"
+        else:
+            show_first = 3
+            show_last = 2
+            w2_vals = [f"{W2[j,0]:.2f}" for j in range(show_first)]
+            w2_vals.append(r"\vdots")
+            w2_vals.extend([f"{W2[j,0]:.2f}" for j in range(n_hidden-show_last, n_hidden)])
+            w2_matrix_str = r"\begin{bmatrix}" + r" \\ ".join(w2_vals) + r"\end{bmatrix}"
+
+        w2_matrix = MathTex(w2_matrix_str, font_size=24)
+        w2_matrix.next_to(titolo_w2, DOWN, buff=0.3)
+        w2_matrix.shift(LEFT * 3)
+
+        # Crea rappresentazione scalare b2
+        titolo_b2 = Text("Scalare b2", font_size=24)
+        titolo_b2.move_to(UP * 1.8 + RIGHT * 3)
+
+        b2_scalar = MathTex(f"{b2[0]:.4f}", font_size=32)
+        b2_scalar.next_to(titolo_b2, DOWN, buff=0.3)
+        b2_scalar.shift(RIGHT * 3)
+
+        self.play(Write(titolo_w2), Write(titolo_b2))
+        self.play(FadeIn(w2_matrix), FadeIn(b2_scalar))
+        self.wait(3)
+
+        # Messaggio finale
         self.play(*[FadeOut(mob) for mob in self.mobjects], run_time=1)

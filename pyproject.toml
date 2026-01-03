@@ -8,6 +8,16 @@ version = "1.0.0"
 description = "Neural Network implementation of Pythagorean Theorem with Manim animations"
 readme = "README.md"
 requires-python = ">=3.8"
+
+# NOTE: System Requirements (must be installed separately):
+# - FFmpeg: Required for Manim video rendering
+#   Windows: choco install ffmpeg OR download from https://ffmpeg.org/
+#   macOS: brew install ffmpeg
+#   Linux: sudo apt-get install ffmpeg
+# - LaTeX (optional): For mathematical text rendering in Manim
+#   Windows: Install MiKTeX or TeX Live
+#   macOS: brew install --cask mactex
+#   Linux: sudo apt-get install texlive-full
 license = {text = "MIT"}
 authors = [
     {name = "Neural Network Pythagorean Theorem Project"}
@@ -43,12 +53,17 @@ classifiers = [
 ]
 
 dependencies = [
-    "numpy>=1.21.0",
-    "matplotlib>=3.5.0",
-    "tensorflow>=2.10.0",
-    "plotly>=5.11.0",
-    "manim>=0.18.0",
-    "optuna>=4.0.0",
+    "numpy",
+    "matplotlib",
+    "tensorflow",  # Versione specifica per compatibilità
+    "keras",  # Compatibile con TensorFlow 2.13.1
+    "protobuf",  # Compatibile con TensorFlow 2.13.1
+    "tensorboard",  # Compatibile con TensorFlow 2.13.1
+    "typing-extensions",  # Compatibile con TensorFlow 2.13.1
+    "plotly",
+    "kaleido",  # Per esportare grafici Plotly
+    "manim",
+    "optuna",  # Versione più conservativa
 ]
 
 [project.optional-dependencies]

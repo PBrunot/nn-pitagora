@@ -1,174 +1,199 @@
-# 3D Surface Animation Guide
+# Guida alle Animazioni 3D delle Superfici
 
-## Interactive Plotly Visualization
+## Visualizzazione Interattiva con Plotly
 
-### Usage
-1. Run the training script:
+### Utilizzo
+
+1. Esegui lo script di addestramento:
+
+   **Con UV (Raccomandato):**
    ```bash
-   source .venv/bin/activate
+   uv run python nn_pitagora.py
+   ```
+
+   **Con ambiente virtuale tradizionale:**
+   ```bash
+   source .venv/bin/activate  # Linux/macOS
+   .venv\Scripts\activate     # Windows
    python nn_pitagora.py
    ```
 
-2. Open `3d_comparison_epochs.html` in your browser
+2. Apri `3d_comparison_epochs.html` nel tuo browser
 
-### Features
-- **Blue surface**: Actual function f(a,b) = √(a² + b²)
-- **Colored surfaces**: NN predictions at different epochs with gradient from red (early) to green (converged)
-- **Interactive controls**:
-  - Click and drag to rotate
-  - Scroll to zoom
-  - Click legend items to toggle surfaces on/off
+### Funzionalità
+- **Superficie blu**: Funzione effettiva f(a,b) = √(a² + b²)
+- **Superfici colorate**: Predizioni della rete neurale a diverse epoche con gradiente dal rosso (iniziale) al verde (convergenza)
+- **Controlli interattivi**:
+  - Clicca e trascina per ruotare
+  - Scorri per ingrandire
+  - Clicca sugli elementi della leggenda per attivare/disattivare le superfici
 
-## Manim 3D Surface Animation
+## Animazione 3D delle Superfici con Manim
 
-### Installation
-Install Manim in your virtual environment:
+### Installazione
+
+Manim dovrebbe già essere installato se hai seguito le istruzioni di installazione nel README.
+
+**Se non l'hai ancora fatto:**
+
+Con UV:
 ```bash
-source .venv/bin/activate
+uv add manim
+```
+
+Con pip:
+```bash
 pip install manim
 ```
 
-### Generate Animation
+### Generare l'Animazione
 
-Smoother morphing animation showing epochs 1, 3, 10, 30, 50 with rotating camera:
+Animazione fluida con morphing che mostra le epoche 1, 3, 10, 30, 50 con camera rotante:
+
+**Con UV (Raccomandato):**
+```bash
+uv run manim -pqh animate_surface.py EvolvingNNSurfaceSimple
+```
+
+**Con ambiente virtuale tradizionale:**
 ```bash
 manim -pqh animate_surface.py EvolvingNNSurfaceSimple
 ```
 
-### Command Flags
-- `-p`: Play the video after rendering
-- `-q`: Quality
-  - `-ql`: Low quality (480p, fast)
-  - `-qm`: Medium quality (720p)
-  - `-qh`: High quality (1080p)
-  - `-qk`: 4K quality (2160p)
+### Flag di Comando
+- `-p`: Riproduce il video dopo il rendering
+- `-q`: Qualità
+  - `-ql`: Bassa qualità (480p, veloce)
+  - `-qm`: Media qualità (720p)
+  - `-qh`: Alta qualità (1080p)
+  - `-qk`: Qualità 4K (2160p)
 
 ### Output
-Videos are saved in `media/videos/animate_surface/1080p60/`
+I video sono salvati in `media/videos/animate_surface/1080p60/`
 
-## Animation Features
+## Caratteristiche dell'Animazione
 
 ### EvolvingNNSurfaceSimple
-- **Optimized camera positioning** for maximum surface visibility
-  - 60° angled view emphasizes surface curvature
-  - -110° theta angle for optimal perspective
-  - Closer camera distance fills screen
-  - Slow rotation (0.06 rate) for easy viewing
-- **Blue semi-transparent surface**: Target function (opacity 0.15)
-- **Colored evolving surface**: NN prediction morphing through epochs (opacity 0.65)
-- **Color gradient**: Red (epoch 1) → Green (epoch 50) showing learning progress
-- **Smooth transitions** between epochs 1 → 3 → 10 → 30 → 50 (3 seconds each)
-- **Proportional scaling** across all axes for accurate representation
-- **Higher resolution surfaces** (30×30) for smooth appearance
-- **Clean epoch counter** (yellow, size 32) - old text fades out before new appears
-- **Large surfaces** filling most of screen for clear visibility
-- Ideal for presentations and demonstrations
+- **Posizionamento ottimizzato della camera** per massima visibilità della superficie
+  - Vista angolata a 60° enfatizza la curvatura della superficie
+  - Angolo theta di -110° per prospettiva ottimale
+  - Distanza camera più ravvicinata riempie lo schermo
+  - Rotazione lenta (velocità 0.06) per facile visualizzazione
+- **Superficie blu semi-trasparente**: Funzione target (opacità 0.15)
+- **Superficie colorata evolutiva**: Predizione della rete neurale che si trasforma attraverso le epoche (opacità 0.65)
+- **Gradiente di colore**: Rosso (epoca 1) → Verde (epoca 50) che mostra il progresso dell'apprendimento
+- **Transizioni fluide** tra le epoche 1 → 3 → 10 → 30 → 50 (3 secondi ciascuna)
+- **Scala proporzionale** su tutti gli assi per rappresentazione accurata
+- **Superfici ad alta risoluzione** (30×30) per aspetto liscio
+- **Contatore epoche pulito** (giallo, dimensione 32) - il testo vecchio scompare prima che appaia quello nuovo
+- **Superfici grandi** che riempiono la maggior parte dello schermo per chiara visibilità
+- Ideale per presentazioni e dimostrazioni
 
-## How the NN Learning Process Works
+## Come Funziona il Processo di Apprendimento della Rete Neurale
 
-### Epoch 1 (Dark Red)
-- Random initial weights
-- Poor approximation, surface is far from target
-- High error across the entire domain
+### Epoca 1 (Rosso Scuro)
+- Pesi iniziali casuali
+- Approssimazione scadente, superficie lontana dal target
+- Errore elevato su tutto il dominio
 
-### Epoch 3 (Red-Orange)
-- Weights starting to adjust
-- Surface beginning to take shape
-- Error still significant
+### Epoca 3 (Rosso-Arancione)
+- Pesi che iniziano ad aggiustarsi
+- Superficie che inizia a prendere forma
+- Errore ancora significativo
 
-### Epoch 10 (Orange-Yellow)
-- Weights have learned basic pattern
-- Surface conforming to correct shape
-- Error decreasing noticeably
+### Epoca 10 (Arancione-Giallo)
+- I pesi hanno appreso il pattern di base
+- Superficie che si conforma alla forma corretta
+- Errore che diminuisce notevolmente
 
-### Epoch 30 (Yellow-Green)
-- Substantial learning complete
-- Surface closely follows target
-- Minor deviations remain
+### Epoca 30 (Giallo-Verde)
+- Apprendimento sostanziale completato
+- Superficie che segue da vicino il target
+- Rimangono deviazioni minori
 
-### Epoch 50 (Green)
-- Well-trained network
-- Surface nearly overlaps with actual function
-- Minimal error, excellent generalization
+### Epoca 50 (Verde)
+- Rete ben addestrata
+- Superficie quasi sovrapposta alla funzione effettiva
+- Errore minimo, eccellente generalizzazione
 
-## Customization
+## Personalizzazione
 
-### Different Epochs
-Edit `nn_pitagora.py` line 54:
+### Epoche Diverse
+Modifica `nn_pitagora.py` riga 54:
 ```python
-epochs_to_plot = [1, 3, 10, 30, 50]  # Change these values
+epochs_to_plot = [1, 3, 10, 30, 50]  # Cambia questi valori
 ```
 
-The animation will automatically use epochs 1, 3, 10, 30, 50 (or whatever exists in the data).
+L'animazione userà automaticamente le epoche 1, 3, 10, 30, 50 (o quelle che esistono nei dati).
 
-### Overall Scale
-Edit `animate_surface.py` lines 27-28 to change surface size:
+### Scala Generale
+Modifica `animate_surface.py` righe 27-28 per cambiare la dimensione della superficie:
 ```python
-xy_scale = 0.6  # Change to make surfaces larger/smaller
-z_scale = 0.6   # Should match xy_scale for proportional representation
+xy_scale = 0.6  # Cambia per rendere le superfici più grandi/piccole
+z_scale = 0.6   # Dovrebbe corrispondere a xy_scale per rappresentazione proporzionale
 ```
 
-Note: For accurate representation, keep xy_scale and z_scale equal. You can amplify the z-axis for dramatic effect, but this will distort the true shape of the function.
+Nota: Per una rappresentazione accurata, mantieni xy_scale e z_scale uguali. Puoi amplificare l'asse z per un effetto drammatico, ma questo distorcerà la vera forma della funzione.
 
-### Camera Position
-Edit camera settings in `animate_surface.py` (lines 34-38):
+### Posizione della Camera
+Modifica le impostazioni della camera in `animate_surface.py` (righe 34-38):
 ```python
 self.set_camera_orientation(
-    phi=60 * DEGREES,     # Vertical angle (higher = more top-down)
-    theta=-110 * DEGREES,  # Horizontal angle
-    distance=8            # Lower = closer (larger view)
+    phi=60 * DEGREES,     # Angolo verticale (più alto = più dall'alto)
+    theta=-110 * DEGREES,  # Angolo orizzontale
+    distance=8            # Più basso = più vicino (vista più grande)
 )
 ```
 
-### Camera Rotation Speed
-Edit rotation rate in `animate_surface.py` (line 40):
+### Velocità di Rotazione della Camera
+Modifica la velocità di rotazione in `animate_surface.py` (riga 40):
 ```python
-self.begin_ambient_camera_rotation(rate=0.06)  # Lower = slower
+self.begin_ambient_camera_rotation(rate=0.06)  # Più basso = più lento
 ```
 
-### Animation Speed
-Edit `animate_surface.py` transition time (line 153):
+### Velocità dell'Animazione
+Modifica il tempo di transizione in `animate_surface.py` (riga 153):
 ```python
-self.play(Transform(...), run_time=3)  # Adjust duration
+self.play(Transform(...), run_time=3)  # Regola la durata
 ```
 
-### Surface Opacity
-Edit opacity values in `animate_surface.py`:
+### Opacità della Superficie
+Modifica i valori di opacità in `animate_surface.py`:
 ```python
-# Actual surface (line 77)
-fill_opacity=0.15  # Target function transparency
+# Superficie effettiva (riga 77)
+fill_opacity=0.15  # Trasparenza della funzione target
 
-# NN surface (line 121)
-fill_opacity=0.65  # NN prediction transparency
+# Superficie rete neurale (riga 121)
+fill_opacity=0.65  # Trasparenza della predizione della rete neurale
 ```
 
-### Resolution
-Edit `resolution` parameter for surface quality vs performance:
+### Risoluzione
+Modifica il parametro `resolution` per qualità della superficie vs prestazioni:
 ```python
-resolution=(30, 30)  # Lower = faster, Higher = smoother (lines 76, 120)
+resolution=(30, 30)  # Più basso = più veloce, Più alto = più liscio (righe 76, 120)
 ```
 
-## Tips for Best Results
+## Suggerimenti per Migliori Risultati
 
-1. **Run training first**: Always run `nn_pitagora.py` before creating animations to generate `epoch_surfaces.pkl`
+1. **Esegui prima l'addestramento**: Esegui sempre `nn_pitagora.py` prima di creare le animazioni per generare `epoch_surfaces.pkl`
 
-2. **Start with low quality**: Test with `-ql` flag first to preview quickly:
+2. **Inizia con bassa qualità**: Testa prima con il flag `-ql` per un'anteprima veloce:
    ```bash
    manim -pql animate_surface.py EvolvingNNSurfaceSimple
    ```
 
-3. **Camera positioning is optimized**: The 60° phi angle and -110° theta angle with distance=8 emphasize surface curvature
+3. **Il posizionamento della camera è ottimizzato**: L'angolo phi di 60° e theta di -110° con distanza=8 enfatizzano la curvatura della superficie
 
-4. **Proportional scaling**: All axes use 0.6 scale for accurate representation of the function's true shape
+4. **Scala proporzionale**: Tutti gli assi usano scala 0.6 per una rappresentazione accurata della vera forma della funzione
 
-5. **Surfaces fill the screen**: The 0.6 scale with closer camera makes surfaces occupy most of the frame
+5. **Le superfici riempiono lo schermo**: La scala 0.6 con camera più vicina fa sì che le superfici occupino la maggior parte del frame
 
-6. **Slower rotation helps**: The 0.06 rotation rate allows viewers to appreciate the morphing without motion blur
+6. **La rotazione più lenta aiuta**: La velocità di rotazione 0.06 permette agli spettatori di apprezzare il morphing senza sfocatura da movimento
 
-7. **Longer transitions show detail**: 3-second morphs between epochs let viewers see the gradual convergence
+7. **Le transizioni più lunghe mostrano i dettagli**: I morphing di 3 secondi tra le epoche permettono agli spettatori di vedere la convergenza graduale
 
-8. **Contrast is optimized**: Blue target (15% opacity) vs colored NN surface (65% opacity) clearly shows the gap
+8. **Il contrasto è ottimizzato**: Target blu (15% opacità) vs superficie rete neurale colorata (65% opacità) mostra chiaramente il divario
 
-9. **No text overlap**: The animation properly fades out old epoch labels before showing new ones
+9. **Nessuna sovrapposizione di testo**: L'animazione dissolve correttamente le vecchie etichette delle epoche prima di mostrare quelle nuove
 
-10. **Yellow epoch labels stand out**: High-contrast yellow text is visible against all surface colors
+10. **Le etichette gialle delle epoche risaltano**: Il testo giallo ad alto contrasto è visibile contro tutti i colori delle superfici

@@ -77,8 +77,8 @@ def print_model_weights(model):
 
 def get_samples(n_samples = 10000):
     # Genera dati di training
-    cateto1 = np.random.uniform(1, 10, n_samples)  # Cateto A: 1-10
-    cateto2 = np.random.uniform(1, 10, n_samples)  # Cateto B: 1-10
+    cateto1 = np.random.uniform(1, 50, n_samples)  # Cateto A: 1-10
+    cateto2 = np.random.uniform(1, 50, n_samples)  # Cateto B: 1-10
     ipotenusa = np.sqrt(cateto1**2 + cateto2**2)  # Target esatto
 
     X_train = np.column_stack((cateto1, cateto2))  # Input (3000, 2)
@@ -364,11 +364,10 @@ def addestra_modello_finale(num_neuroni, learning_rate, epochs=300, num_samples=
     plt.plot(history.history["val_loss"], label="Validation Loss", linewidth=2)
     plt.title(f"Loss per Epoch (neuroni={num_neuroni}, lr={learning_rate:.6f})")
     plt.xlabel("Epoch")
-    plt.ylabel("MSE")
+    plt.ylabel("MSE (log scale)")
     plt.yscale("log")
     plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.ylim(0, 5)
+    plt.grid(True, alpha=0.3, which='both')
     plt.tight_layout()
     plt.savefig("rete_ottimizzata.png", dpi=200, bbox_inches="tight")
     print("Grafico salvato in: rete_ottimizzata.png\n")
@@ -377,10 +376,137 @@ def addestra_modello_finale(num_neuroni, learning_rate, epochs=300, num_samples=
     return model, history
 
 
+def confronta_performance_campioni(sample_sizes=[10, 100, 1000, 10000, 100000],
+                                   num_neuroni=50,
+                                   learning_rate=0.001,
+                                   epochs=50,
+                                   test_samples=1000):
+    """Confronta la performance della rete neurale con diversi numeri di campioni di training.
+
+    Args:
+        sample_sizes: Lista di numeri di campioni da testare
+        num_neuroni: Numero di neuroni nello strato nascosto
+        learning_rate: Learning rate per l'ottimizzatore
+        epochs: Numero di epoche di training
+        test_samples: Numero di campioni per il set di test (fisso per tutti)
+    """
+
+    print("\n" + "="*70)
+    print("CONFRONTO PERFORMANCE CON DIVERSI NUMERI DI CAMPIONI")
+    print("="*70)
+    print(f"Configurazione:")
+    print(f"  - Neuroni: {num_neuroni}")
+    print(f"  - Learning rate: {learning_rate}")
+    print(f"  - Epoche: {epochs}")
+    print(f"  - Campioni da testare: {sample_sizes}")
+    print(f"  - Campioni test (fisso): {test_samples}")
+    print("="*70 + "\n")
+
+    # Genera un set di test fisso per confronto equo
+    print("Generazione set di test (fisso per tutti gli esperimenti)...")
+    X_test, y_test = get_samples(test_samples)
+
+    results = {
+        'sample_sizes': [],
+        'train_loss': [],
+        'test_loss': [],
+        'test_mae': []
+    }
+
+    for n_samples in sample_sizes:
+        print(f"\n{'='*70}")
+        print(f"Training con {n_samples} campioni...")
+        print(f"{'='*70}")
+
+        # Genera dati di training
+        X_train, y_train = get_samples(n_samples)
+
+        # Crea e addestra il modello
+        model = modello_pitagora(num_neuroni, learning_rate)
+
+        history = model.fit(
+            X_train,
+            y_train,
+            epochs=epochs,
+            batch_size=min(32, n_samples),  # Adatta batch size per campioni piccoli
+            verbose='auto',
+            shuffle=True,
+        )
+
+        # Valuta sul set di test
+        test_loss, test_mae = model.evaluate(X_test, y_test, verbose='auto')
+        train_loss = history.history["loss"][-1]
+
+        # Salva risultati
+        results['sample_sizes'].append(n_samples)
+        results['train_loss'].append(train_loss)
+        results['test_loss'].append(test_loss)
+        results['test_mae'].append(test_mae)
+
+        print(f"  Training Loss finale: {train_loss:.6f}")
+        print(f"  Test Loss: {test_loss:.6f}")
+        print(f"  Test MAE: {test_mae:.6f}")
+
+    print(f"\n{'='*70}")
+    print("RISULTATI FINALI")
+    print(f"{'='*70}")
+    for i, n in enumerate(results['sample_sizes']):
+        print(f"Campioni: {n:5d} | Train Loss: {results['train_loss'][i]:.6f} | "
+              f"Test Loss: {results['test_loss'][i]:.6f} | Test MAE: {results['test_mae'][i]:.6f}")
+    print(f"{'='*70}\n")
+
+    # Crea grafici
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+
+    # Grafico 1: Training Loss
+    axes[0].plot(results['sample_sizes'], results['train_loss'],
+                 marker='o', linewidth=2, markersize=8, color='blue')
+    axes[0].set_xlabel('Numero di Campioni di Training (log scale)', fontsize=12)
+    axes[0].set_ylabel('Training Loss (MSE, log scale)', fontsize=12)
+    axes[0].set_title('Training Loss vs Numero di Campioni', fontsize=14, fontweight='bold')
+    axes[0].set_xscale('log')
+    axes[0].set_yscale('log')
+    axes[0].grid(True, alpha=0.3, which='both', linestyle='--')
+    axes[0].set_xticks(results['sample_sizes'])
+    axes[0].set_xticklabels(results['sample_sizes'])
+
+    # Grafico 2: Test Loss
+    axes[1].plot(results['sample_sizes'], results['test_loss'],
+                 marker='s', linewidth=2, markersize=8, color='red')
+    axes[1].set_xlabel('Numero di Campioni di Training (log scale)', fontsize=12)
+    axes[1].set_ylabel('Test Loss (MSE, log scale)', fontsize=12)
+    axes[1].set_title('Test Loss vs Numero di Campioni', fontsize=14, fontweight='bold')
+    axes[1].set_xscale('log')
+    axes[1].set_yscale('log')
+    axes[1].grid(True, alpha=0.3, which='both', linestyle='--')
+    axes[1].set_xticks(results['sample_sizes'])
+    axes[1].set_xticklabels(results['sample_sizes'])
+
+    # Grafico 3: Test MAE
+    axes[2].plot(results['sample_sizes'], results['test_mae'],
+                 marker='^', linewidth=2, markersize=8, color='green')
+    axes[2].set_xlabel('Numero di Campioni di Training (log scale)', fontsize=12)
+    axes[2].set_ylabel('Test MAE (log scale)', fontsize=12)
+    axes[2].set_title('Test MAE vs Numero di Campioni', fontsize=14, fontweight='bold')
+    axes[2].set_xscale('log')
+    axes[2].set_yscale('log')
+    axes[2].grid(True, alpha=0.3, which='both', linestyle='--')
+    axes[2].set_xticks(results['sample_sizes'])
+    axes[2].set_xticklabels(results['sample_sizes'])
+
+    plt.tight_layout()
+    plt.savefig("confronto_performance_campioni.png", dpi=200, bbox_inches="tight")
+    print("Grafico salvato in: confronto_performance_campioni.png\n")
+    plt.show()
+
+    return results
+
+
 if __name__ == "__main__":
     # Configurazione ottimizzazione
-    USE_OPTUNA = True  # Imposta False per usare parametri predefiniti
+    USE_OPTUNA = False  # Imposta False per usare parametri predefiniti
     SEQUENTIAL_OPTIMIZATION = True  # True: ottimizza prima LR poi altri; False: tutto insieme
+    CONFRONTA_CAMPIONI = True  # Imposta True per confrontare performance con diversi campioni
 
     if USE_OPTUNA:
         # Esegui ottimizzazione
@@ -410,9 +536,21 @@ if __name__ == "__main__":
     else:
         # Modalità 2: Usa parametri predefiniti (veloce)
         print("Usando parametri predefiniti (salta ottimizzazione)...\n")
-        model, history = addestra_modello_finale(
-            num_neuroni=50,
-            learning_rate=0.001,
-            num_samples=10000,
-            epochs=300
-        )
+
+        if CONFRONTA_CAMPIONI:
+            # Confronta performance con diversi numeri di campioni
+            results = confronta_performance_campioni(
+                sample_sizes=[10, 100, 1000, 10000, 100000],
+                num_neuroni=50,
+                learning_rate=0.001,
+                epochs=50,
+                test_samples=1000
+            )
+        else:
+            # Training normale con un solo numero di campioni
+            model, history = addestra_modello_finale(
+                num_neuroni=50,
+                learning_rate=0.001,
+                num_samples=5000,
+                epochs=50
+            )

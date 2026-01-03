@@ -14,7 +14,7 @@ class PesiReteNeurale(Scene):
             W2 = dati_pesi['W2']  # Forma: (100, 1)
             b2 = dati_pesi['b2']  # Forma: (1,)
         except FileNotFoundError:
-            self.add(Text("Errore: pesi_modello.pkl non trovato!", color=RED))
+            self.add(Text("Errore: model_weights.pkl non trovato!", color=RED))
             return
 
         # Titolo
@@ -207,12 +207,12 @@ class HeatmapPesi(Scene):
     def construct(self):
         # Carica pesi modello addestrato
         try:
-            with open('pesi_modello.pkl', 'rb') as f:
+            with open('model_weights.pkl', 'rb') as f:
                 dati_pesi = pickle.load(f)
             W1 = dati_pesi['W1']  # Forma: (2, 100)
             W2 = dati_pesi['W2']  # Forma: (100, 1)
         except FileNotFoundError:
-            self.add(Text("Errore: pesi_modello.pkl non trovato!", color=RED))
+            self.add(Text("Errore: model_weights.pkl non trovato!", color=RED))
             return
 
         # Ottieni dimensione rete reale
@@ -332,14 +332,14 @@ class CalcoloEsempio(Scene):
     def construct(self):
         # Carica pesi modello addestrato
         try:
-            with open('pesi_modello.pkl', 'rb') as f:
+            with open('model_weights.pkl', 'rb') as f:
                 dati_pesi = pickle.load(f)
             W1 = dati_pesi['W1']  # Forma: (2, n_nascosti)
             b1 = dati_pesi['b1']  # Forma: (n_nascosti,)
             W2 = dati_pesi['W2']  # Forma: (n_nascosti, 1)
             b2 = dati_pesi['b2']  # Forma: (1,)
         except FileNotFoundError:
-            self.add(Text("Errore: pesi_modello.pkl non trovato!", color=RED))
+            self.add(Text("Errore: model_weights.pkl non trovato!", color=RED))
             return
 
         n_hidden = W1.shape[1]
@@ -368,97 +368,121 @@ class CalcoloEsempio(Scene):
         self.play(Write(eq_input))
         self.wait(1.5)
 
-        # Passo 2: Calcola strato nascosto (mostra primi 3 neuroni per chiarezza)
+        # Passo 2: Mostra matrici pesi e bias dello strato nascosto
         self.play(FadeOut(titolo_passo1), FadeOut(eq_input))
 
-        titolo_passo2 = Text("Passo 2: Strato Nascosto (ReLU)", font_size=28, color=GREEN)
-        titolo_passo2.move_to(UP * 2.5)
+        titolo_passo2 = Text("Passo 2: Pesi e Bias Strato Nascosto", font_size=28, color=GREEN)
+        titolo_passo2.to_edge(UP)
         self.play(Write(titolo_passo2))
+        self.wait(0.5)
 
-        # Calculate z = W1^T @ x + b1
+        # Calcola output per dopo (ma non mostrare ancora)
         x_input = np.array([1, 2])
         z_hidden = W1.T @ x_input + b1
         a_hidden = np.maximum(0, z_hidden)  # ReLU activation
 
-        # Show calculation for first 3 neurons
-        calc_group = VGroup()
-        show_neurons = min(3, n_hidden)
+        # Crea rappresentazione matrice W1 (2 × n_hidden)
+        titolo_w1 = Text(f"Matrice W1 (2 × {n_hidden})", font_size=24)
+        titolo_w1.move_to(UP * 2.5 + LEFT * 3)
 
-        for i in range(show_neurons):
-            w1_val = W1[0, i]
-            w2_val = W1[1, i]
-            b_val = b1[i]
-            z_val = z_hidden[i]
-            a_val = a_hidden[i]
+        # Costruisci la matrice W1 come testo matematico
+        max_show_cols = 8  # Mostra massimo 8 colonne per leggibilità
+        if n_hidden <= max_show_cols:
+            # Mostra tutta la matrice
+            w1_rows = []
+            for i in range(2):
+                row_vals = [f"{W1[i,j]:.2f}" for j in range(n_hidden)]
+                w1_rows.append(" & ".join(row_vals))
+            w1_matrix_str = r"\begin{bmatrix}" + r" \\ ".join(w1_rows) + r"\end{bmatrix}"
+        else:
+            # Mostra prime colonne + ... + ultime colonne
+            show_first = 4
+            show_last = 2
+            w1_rows = []
+            for i in range(2):
+                row_vals = [f"{W1[i,j]:.2f}" for j in range(show_first)]
+                row_vals.append(r"\cdots")
+                row_vals.extend([f"{W1[i,j]:.2f}" for j in range(n_hidden-show_last, n_hidden)])
+                w1_rows.append(" & ".join(row_vals))
+            w1_matrix_str = r"\begin{bmatrix}" + r" \\ ".join(w1_rows) + r"\end{bmatrix}"
 
-            calc_text = Text(
-                f"h{i+1}: z = {w1_val:.2f}×1 + {w2_val:.2f}×2 + {b_val:.2f} = {z_val:.2f}",
-                font_size=18
-            )
-            relu_text = Text(
-                f"    a = ReLU({z_val:.2f}) = {a_val:.2f}",
-                font_size=18,
-                color=GREEN if a_val > 0 else RED
-            )
+        w1_matrix = MathTex(w1_matrix_str, font_size=20)
+        w1_matrix.next_to(titolo_w1, DOWN, buff=0.3)
+        w1_matrix.shift(LEFT * 3)
 
-            neuron_calc = VGroup(calc_text, relu_text).arrange(DOWN, aligned_edge=LEFT, buff=0.1)
-            calc_group.add(neuron_calc)
+        # Crea rappresentazione vettore b1
+        titolo_b1 = Text(f"Vettore b1 ({n_hidden})", font_size=24)
+        titolo_b1.move_to(UP * 2.5 + RIGHT * 3)
 
-        calc_group.arrange(DOWN, aligned_edge=LEFT, buff=0.3)
-        calc_group.move_to(UP * 0.5)
+        if n_hidden <= max_show_cols:
+            b1_vals = [f"{b1[j]:.2f}" for j in range(n_hidden)]
+            b1_vector_str = r"\begin{bmatrix}" + r" \\ ".join(b1_vals) + r"\end{bmatrix}"
+        else:
+            b1_vals = [f"{b1[j]:.2f}" for j in range(show_first)]
+            b1_vals.append(r"\vdots")
+            b1_vals.extend([f"{b1[j]:.2f}" for j in range(n_hidden-show_last, n_hidden)])
+            b1_vector_str = r"\begin{bmatrix}" + r" \\ ".join(b1_vals) + r"\end{bmatrix}"
 
-        self.play(*[FadeIn(calc) for calc in calc_group])
+        b1_vector = MathTex(b1_vector_str, font_size=20)
+        b1_vector.next_to(titolo_b1, DOWN, buff=0.3)
+        b1_vector.shift(RIGHT * 3)
+
+        self.play(Write(titolo_w1), Write(titolo_b1))
+        self.play(FadeIn(w1_matrix), FadeIn(b1_vector))
         self.wait(2)
 
-        # Show ellipsis if there are more neurons
-        if n_hidden > show_neurons:
-            ellipsis = Text(f"... ({n_hidden - show_neurons} more neurons)", font_size=18, color=GRAY)
-            ellipsis.next_to(calc_group, DOWN, buff=0.3)
-            self.play(FadeIn(ellipsis))
-            self.wait(1)
+        # Passo 3: Mostra matrici pesi e bias dello strato output
+        self.play(
+            FadeOut(titolo_passo2), FadeOut(titolo_w1), FadeOut(titolo_b1),
+            FadeOut(w1_matrix), FadeOut(b1_vector)
+        )
 
-        # Passo 3: Strato output
-        self.play(*[FadeOut(mob) for mob in [titolo_passo2, calc_group] + ([ellipsis] if n_hidden > show_neurons else [])])
-
-        titolo_passo3 = Text("Passo 3: Strato Output (Lineare)", font_size=28, color=RED)
-        titolo_passo3.move_to(UP * 2.5)
+        titolo_passo3 = Text("Passo 3: Pesi e Bias Strato Output", font_size=28, color=RED)
+        titolo_passo3.to_edge(UP)
         self.play(Write(titolo_passo3))
+        self.wait(0.5)
 
-        # Calculate output: y = W2^T @ a + b2
+        # Calcola output
         y_output = W2.T @ a_hidden + b2
         prediction = y_output[0]
 
-        # Mostra calcolo output
-        testo_output = Text("Calcolo output:", font_size=20)
-        testo_output.move_to(UP * 1.5)
+        # Crea rappresentazione matrice W2 (n_hidden × 1)
+        titolo_w2 = Text(f"Matrice W2 ({n_hidden} × 1)", font_size=24)
+        titolo_w2.move_to(UP * 2.5 + LEFT * 3)
 
-        # Build equation showing sum of weighted activations
-        sum_terms = []
-        for i in range(min(3, n_hidden)):
-            sum_terms.append(f"{W2[i, 0]:.2f}×{a_hidden[i]:.2f}")
-
-        if n_hidden > 3:
-            equation_str = f"y = {' + '.join(sum_terms)} + ... + {b2[0]:.2f}"
+        if n_hidden <= max_show_cols:
+            w2_vals = [f"{W2[j,0]:.2f}" for j in range(n_hidden)]
+            w2_matrix_str = r"\begin{bmatrix}" + r" \\ ".join(w2_vals) + r"\end{bmatrix}"
         else:
-            equation_str = f"y = {' + '.join(sum_terms)} + {b2[0]:.2f}"
+            w2_vals = [f"{W2[j,0]:.2f}" for j in range(show_first)]
+            w2_vals.append(r"\vdots")
+            w2_vals.extend([f"{W2[j,0]:.2f}" for j in range(n_hidden-show_last, n_hidden)])
+            w2_matrix_str = r"\begin{bmatrix}" + r" \\ ".join(w2_vals) + r"\end{bmatrix}"
 
-        equation = Text(equation_str, font_size=16)
-        equation.next_to(testo_output, DOWN, buff=0.3)
+        w2_matrix = MathTex(w2_matrix_str, font_size=20)
+        w2_matrix.next_to(titolo_w2, DOWN, buff=0.3)
+        w2_matrix.shift(LEFT * 3)
 
-        result_text = Text(f"y = {prediction:.4f}", font_size=24, color=YELLOW)
-        result_text.next_to(equation, DOWN, buff=0.5)
+        # Crea rappresentazione scalare b2
+        titolo_b2 = Text("Scalare b2", font_size=24)
+        titolo_b2.move_to(UP * 2.5 + RIGHT * 3)
 
-        self.play(Write(testo_output))
-        self.play(Write(equation))
-        self.wait(1)
-        self.play(Write(result_text))
-        self.wait(1.5)
+        b2_scalar = MathTex(f"{b2[0]:.4f}", font_size=30)
+        b2_scalar.next_to(titolo_b2, DOWN, buff=0.3)
+        b2_scalar.shift(RIGHT * 3)
 
-        # Confronto
-        self.play(FadeOut(titolo_passo3), FadeOut(testo_output), FadeOut(equation))
+        self.play(Write(titolo_w2), Write(titolo_b2))
+        self.play(FadeIn(w2_matrix), FadeIn(b2_scalar))
+        self.wait(2)
 
-        titolo_confronto = Text("Confronto", font_size=32, color=PURPLE)
-        titolo_confronto.move_to(UP * 2)
+        # Mostra risultato finale
+        self.play(
+            FadeOut(titolo_passo3), FadeOut(titolo_w2), FadeOut(titolo_b2),
+            FadeOut(w2_matrix), FadeOut(b2_scalar)
+        )
+
+        titolo_risultato = Text("Risultato Finale", font_size=32, color=PURPLE)
+        titolo_risultato.to_edge(UP)
 
         linea_pred = Text(f"Predetto:  {prediction:.4f}", font_size=28)
         linea_reale = Text(f"Reale:     {atteso:.4f}", font_size=28)
@@ -467,26 +491,13 @@ class CalcoloEsempio(Scene):
         linea_errore = Text(f"Errore:      {errore:.4f} ({errore_pct:.2f}%)", font_size=28,
                          color=GREEN if errore_pct < 5 else YELLOW if errore_pct < 10 else RED)
 
-        confronto = VGroup(linea_pred, linea_reale, linea_errore)
-        confronto.arrange(DOWN, aligned_edge=LEFT, buff=0.3)
-        confronto.move_to(ORIGIN)
+        risultato = VGroup(linea_pred, linea_reale, linea_errore)
+        risultato.arrange(DOWN, aligned_edge=LEFT, buff=0.3)
+        risultato.move_to(ORIGIN)
 
-        self.play(FadeOut(result_text))
-        self.play(Write(titolo_confronto))
-        self.play(*[Write(linea) for linea in confronto])
+        self.play(Write(titolo_risultato))
+        self.play(*[Write(linea) for linea in risultato])
         self.wait(3)
-
-        # Messaggio finale
-        if errore_pct < 5:
-            msg = Text("Predizione eccellente! ✓", font_size=24, color=GREEN)
-        elif errore_pct < 10:
-            msg = Text("Buona predizione", font_size=24, color=YELLOW)
-        else:
-            msg = Text("Ha bisogno di più addestramento", font_size=24, color=RED)
-
-        msg.to_edge(DOWN)
-        self.play(FadeIn(msg))
-        self.wait(2)
 
 
 if __name__ == "__main__":

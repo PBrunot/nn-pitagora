@@ -17,44 +17,106 @@ La rete si adatta dinamicamente - modificando la dimensione dello strato nascost
 
 ## Installazione
 
-### 1. Creare l'Ambiente Virtuale
+### 1. Requisiti di Sistema
+
+**IMPORTANTE: FFmpeg è richiesto per Manim** e deve essere installato prima delle dipendenze Python.
+
+#### Windows
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate  # Su Windows: .venv\Scripts\activate
+# Opzione 1: Con Chocolatey
+choco install ffmpeg
+
+# Opzione 2: Download manuale
+# Scarica da https://ffmpeg.org/ e aggiungi al PATH
 ```
 
-### 2. Installare le Librerie Richieste
+#### macOS
 ```bash
-pip install numpy matplotlib tensorflow plotly manim
+brew install ffmpeg
 ```
 
-**Pacchetti richiesti:**
+#### Linux (Ubuntu/Debian)
+```bash
+sudo apt-get update
+sudo apt-get install ffmpeg
+```
+
+**Opzionale - LaTeX** (per rendering testo matematico in Manim):
+- **Windows**: Installa [MiKTeX](https://miktex.org/) o [TeX Live](https://www.tug.org/texlive/)
+- **macOS**: `brew install --cask mactex`
+- **Linux**: `sudo apt-get install texlive texlive-latex-extra`
+
+### 2. Installare UV (Raccomandato)
+
+UV è un package manager Python ultrarapido che sostituisce pip e gestisce automaticamente gli ambienti virtuali.
+
+**Installazione UV:**
+
+```bash
+# Windows (PowerShell)
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Alternativa con pip
+pip install uv
+```
+
+### 3. Installare il Progetto e le Dipendenze
+
+**Metodo Raccomandato** (con UV):
+```bash
+# UV crea automaticamente l'ambiente virtuale e installa tutte le dipendenze
+uv sync
+
+# Per includere anche strumenti di sviluppo (pytest, black, ecc.):
+uv sync --extra dev
+
+# Attiva l'ambiente creato da UV
+# Windows:
+.venv\Scripts\activate
+
+# Linux/macOS:
+source .venv/bin/activate
+```
+
+**Metodo Alternativo** (con pip tradizionale):
+```bash
+# Crea ambiente virtuale manualmente
+python -m venv .venv
+
+# Attiva l'ambiente
+# Windows:
+.venv\Scripts\activate
+# Linux/macOS:
+source .venv/bin/activate
+
+# Installa le dipendenze
+pip install -e .
+
+# Per includere strumenti di sviluppo:
+pip install -e ".[dev]"
+```
+
+### 4. Verificare l'Installazione
+```bash
+# Verifica FFmpeg
+ffmpeg -version
+
+# Verifica pacchetti Python
+python -c "import numpy, matplotlib, tensorflow, keras, plotly, manim, optuna; print('✓ Tutti i pacchetti installati con successo!')"
+```
+
+**Pacchetti installati:**
 - `numpy` - Calcolo numerico e generazione dati
 - `matplotlib` - Visualizzazione della loss durante l'addestramento
-- `tensorflow` (include `keras`) - Framework per l'addestramento della rete neurale
+- `tensorflow` - Framework deep learning
+- `keras` - API per reti neurali (incluso in TensorFlow)
 - `plotly` - Grafici 3D interattivi
-- `manim` - Motore di animazione matematica (per la generazione di video)
-
-**Dipendenze di sistema per Manim:**
-- Distribuzione LaTeX (TeX Live o MiKTeX)
-- FFmpeg
-- Cairo
-
-Su Ubuntu/Debian:
-```bash
-sudo apt-get install texlive texlive-latex-extra ffmpeg libcairo2-dev
-```
-
-Su macOS:
-```bash
-brew install --cask mactex
-brew install ffmpeg cairo
-```
-
-### 3. Verificare l'Installazione
-```bash
-python -c "import numpy, matplotlib, keras, plotly, manim; print('Tutti i pacchetti installati con successo!')"
-```
+- `kaleido` - Export grafici Plotly in formati statici
+- `manim` - Motore di animazione matematica professionale
+- `optuna` - Ottimizzazione iperparametri
 
 ## File
 
@@ -99,6 +161,13 @@ Scena Manim che dimostra il teorema di Pitagora con predizioni della rete neural
 ## Utilizzo
 
 ### 1. Addestrare il Modello
+
+**Con UV (Raccomandato):**
+```bash
+uv run python nn_pitagora.py
+```
+
+**Con ambiente virtuale tradizionale:**
 ```bash
 python nn_pitagora.py
 ```
@@ -109,35 +178,55 @@ Questo:
 - Salva `model_weights.pkl` per le animazioni
 - Visualizza le predizioni di test
 
-### 2. Generare le Animazioni (richiede Manim)
+### 2. Generare le Animazioni
 
-Installare Manim se necessario:
+Manim dovrebbe già essere installato. Se non lo è:
+
+**Con UV:**
+```bash
+uv add manim
+```
+
+**Con pip:**
 ```bash
 pip install manim
 ```
 
-Renderizzare la visualizzazione della rete:
+**Renderizzare le animazioni:**
+
+Con UV (Raccomandato):
 ```bash
+# Visualizzazione della rete
+uv run manim -pql animate_weights.py NeuralNetworkWeights
+
+# Mappa di calore dei pesi
+uv run manim -pql animate_weights.py WeightHeatmap
+
+# Calcolo di esempio per (1, 2)
+uv run manim -pql animate_weights.py SampleCalculation
+
+# Tutte le scene contemporaneamente
+uv run manim -pql animate_weights.py NeuralNetworkWeights WeightHeatmap SampleCalculation
+
+# Scena dei triangoli rettangoli
+uv run manim -pql right_triangles.py TriangoliRettangoli
+```
+
+Con ambiente virtuale tradizionale:
+```bash
+# Visualizzazione della rete
 manim -pql animate_weights.py NeuralNetworkWeights
-```
 
-Renderizzare la mappa di calore dei pesi:
-```bash
+# Mappa di calore dei pesi
 manim -pql animate_weights.py WeightHeatmap
-```
 
-Renderizzare il calcolo di esempio per (1, 2):
-```bash
+# Calcolo di esempio per (1, 2)
 manim -pql animate_weights.py SampleCalculation
-```
 
-Renderizzare tutte le scene contemporaneamente:
-```bash
+# Tutte le scene contemporaneamente
 manim -pql animate_weights.py NeuralNetworkWeights WeightHeatmap SampleCalculation
-```
 
-Renderizzare la scena dei triangoli rettangoli:
-```bash
+# Scena dei triangoli rettangoli
 manim -pql right_triangles.py TriangoliRettangoli
 ```
 

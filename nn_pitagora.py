@@ -239,19 +239,21 @@ def grafico_cronologia_addestramento(
     plt.plot(cronologia.history["loss"], label="Perdita Addestramento")
     plt.plot(cronologia.history["val_loss"], label="Perdita Validazione")
     plt.xlabel("Epoca")
-    plt.ylabel("Perdita (MSE)")
+    plt.ylabel("Perdita (MSE, log scale)")
+    plt.yscale("log")
     plt.title("Perdita Durante Addestramento")
     plt.legend()
-    plt.grid(True)
+    plt.grid(True, alpha=0.3, which='both')
 
     plt.subplot(1, 2, 2)
     plt.plot(cronologia.history["mae"], label="MAE Addestramento")
     plt.plot(cronologia.history["val_mae"], label="MAE Validazione")
     plt.xlabel("Epoca")
-    plt.ylabel("Errore Assoluto Medio")
+    plt.ylabel("Errore Assoluto Medio (log scale)")
+    plt.yscale("log")
     plt.title("MAE Durante Addestramento")
     plt.legend()
-    plt.grid(True)
+    plt.grid(True, alpha=0.3, which='both')
 
     plt.tight_layout()
     plt.savefig(nome_file_salvataggio)
@@ -460,8 +462,8 @@ def salva_dati_epoca_per_animazione(
     range_b,
     Z_reale,
     X_griglia,
-    unita_nascoste=50,
-    attivazione="tanh",
+    unita_nascoste=30,
+    attivazione="relu",
     nome_file="superfici_epoche.pkl",
 ):
     """Salva dati epoca per animazione Manim.
@@ -515,15 +517,15 @@ def principale():
     # Configurazione
     unita_nascoste = 10
     attivazione = "relu"
-    tasso_apprendimento = 0.001
+    tasso_apprendimento = 0.002
     epoche = 75
-    epoche_da_salvare = [1, 3, 5, 10, 20, 30, 40, 50, 75]
+    epoche_da_salvare = [1, 3, 5, 10, 20, 50, 75]
 
     # Imposta seme casuale
     imposta_seme_casuale(42)
 
     # Genera dati di addestramento
-    X_addestramento, y_addestramento = genera_dati_addestramento(n_campioni=5000)
+    X_addestramento, y_addestramento = genera_dati_addestramento(n_campioni=1000)
 
     # Costruisci e mostra modello
     modello = costruisci_modello(unita_nascoste, attivazione, tasso_apprendimento)
