@@ -23,3 +23,6 @@ Thumbs.db
 /.vs
 /saved_models
 Rete_Pitagora.keras
+nn_pitagora.egg-info/dependency_links.txt
+/nn_pitagora.egg-info
+uv.lock

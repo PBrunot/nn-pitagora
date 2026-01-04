@@ -241,8 +241,9 @@ def grafico_cronologia_addestramento(
     plt.xlabel("Epoca")
     plt.ylabel("Perdita (MSE)")
     plt.title("Perdita Durante Addestramento")
+    plt.yscale('log')
     plt.legend()
-    plt.grid(True)
+    plt.grid(True, which="both", ls="-", alpha=0.2)
 
     plt.subplot(1, 2, 2)
     plt.plot(cronologia.history["mae"], label="MAE Addestramento")
@@ -250,8 +251,9 @@ def grafico_cronologia_addestramento(
     plt.xlabel("Epoca")
     plt.ylabel("Errore Assoluto Medio")
     plt.title("MAE Durante Addestramento")
+    plt.yscale('log')
     plt.legend()
-    plt.grid(True)
+    plt.grid(True, which="both", ls="-", alpha=0.2)
 
     plt.tight_layout()
     plt.savefig(nome_file_salvataggio)
@@ -349,9 +351,9 @@ def ottieni_colore_epoca(indice_epoca, totale_epoche):
 def crea_visualizzazione_3d(
     callback_salvataggio,
     epoche_da_graficare,
-    risoluzione=50,
-    unita_nascoste=50,
-    attivazione="tanh",
+    risoluzione=100,
+    unita_nascoste=35,
+    attivazione="relu",
 ):
     """Crea visualizzazione 3D confrontando funzione reale con predizioni NN.
 
@@ -499,6 +501,152 @@ def salva_dati_epoca_per_animazione(
     print(f"Dati superficie epoca salvati in '{nome_file}' per animazione Manim")
 
 
+def crea_visualizzazione_errori_3d(
+    callback_salvataggio,
+    epoche_da_graficare,
+    risoluzione=100,
+    unita_nascoste=35,
+    attivazione="relu",
+):
+    """Crea visualizzazione 3D degli errori con scala logaritmica signed.
+
+    Args:
+        callback_salvataggio: Oggetto callback con pesi modello salvati
+        epoche_da_graficare (list): Lista di epoche da visualizzare
+        risoluzione (int): Risoluzione griglia per visualizzazione
+        unita_nascoste (int): Numero di unità nascoste nel modello
+        attivazione (str): Funzione di attivazione usata nel modello
+
+    Returns:
+        go.Figure: Figura Plotly con visualizzazione errori
+    """
+    print("\nGenerazione grafico errori 3D con scala signed-log...")
+
+    # Crea meshgrid
+    range_a = np.linspace(-5, 5, risoluzione)
+    range_b = np.linspace(-5, 5, risoluzione)
+    A, B = np.meshgrid(range_a, range_b)
+
+    # Calcola valori funzione reale
+    Z_reale = np.sqrt(A**2 + B**2)
+
+    # Prepara input per predizioni
+    X_griglia = np.column_stack((A.ravel(), B.ravel()))
+
+    # Crea figura con subplots
+    n_epoche = len(epoche_da_graficare)
+    cols = min(3, n_epoche)
+    rows = (n_epoche + cols - 1) // cols
+
+    fig = make_subplots(
+        rows=rows,
+        cols=cols,
+        specs=[[{'type': 'surface'}] * cols for _ in range(rows)],
+        subplot_titles=[f'Epoca {e}' for e in epoche_da_graficare],
+        vertical_spacing=0.05,
+        horizontal_spacing=0.05,
+    )
+
+    print("\nErrori per epoca:")
+    print("=" * 60)
+
+    # Funzione per applicare signed log scale
+    def signed_log_scale(data, threshold=0.01):
+        """Applica scala logaritmica con segno per gestire valori positivi e negativi."""
+        sign = np.sign(data)
+        abs_data = np.abs(data)
+        # Applica log solo a valori sopra threshold, altrimenti scala lineare
+        log_data = np.where(
+            abs_data > threshold,
+            sign * np.log10(abs_data + 1),
+            data / threshold
+        )
+        return log_data
+
+    # Trova range globale per scala colori consistente
+    all_errors = []
+    for epoca in epoche_da_graficare:
+        Z_predetto = ottieni_predizioni_per_epoca(
+            callback_salvataggio.modelli_salvati[epoca],
+            X_griglia,
+            A.shape,
+            unita_nascoste,
+            attivazione,
+        )
+        errore = Z_predetto - Z_reale
+        all_errors.append(errore)
+
+    # Calcola range per colorscale
+    all_errors_array = np.array(all_errors)
+    error_min = np.min(all_errors_array)
+    error_max = np.max(all_errors_array)
+    error_range = max(abs(error_min), abs(error_max))
+
+    # Aggiungi superfici errore per ogni epoca
+    for idx, epoca in enumerate(epoche_da_graficare):
+        row = idx // cols + 1
+        col = idx % cols + 1
+
+        errore = all_errors[idx]
+
+        # Calcola metriche
+        mae = np.mean(np.abs(errore))
+        errore_max_abs = np.max(np.abs(errore))
+        rmse = np.sqrt(np.mean(errore**2))
+
+        print(
+            f"Epoca {epoca:2d} | MAE: {mae:7.4f} | Max |Err|: {errore_max_abs:7.4f} | RMSE: {rmse:7.4f}"
+        )
+
+        # Applica signed log scale all'errore
+        errore_scaled = signed_log_scale(errore)
+
+        fig.add_trace(
+            go.Surface(
+                x=A,
+                y=B,
+                z=errore,
+                surfacecolor=errore_scaled,
+                colorscale='RdBu_r',  # Rosso per positivo, blu per negativo
+                cmin=-signed_log_scale(np.array([error_range]))[0],
+                cmax=signed_log_scale(np.array([error_range]))[0],
+                showscale=(idx == 0),  # Mostra scala solo per primo subplot
+                colorbar=dict(
+                    title="Errore<br>(signed log)",
+                    x=1.05,
+                ) if idx == 0 else None,
+                hovertemplate=(
+                    f"Epoca {epoca}<br>"
+                    "a: %{x:.2f}<br>"
+                    "b: %{y:.2f}<br>"
+                    "Errore: %{z:.4f}<extra></extra>"
+                ),
+            ),
+            row=row,
+            col=col,
+        )
+
+    # Aggiorna assi per tutti i subplot
+    for idx in range(len(epoche_da_graficare)):
+        scene_name = 'scene' if idx == 0 else f'scene{idx + 1}'
+        fig.layout[scene_name].xaxis_title = "a"
+        fig.layout[scene_name].yaxis_title = "b"
+        fig.layout[scene_name].zaxis_title = "Errore"
+        fig.layout[scene_name].camera = dict(eye=dict(x=1.5, y=1.5, z=1.3))
+
+    print("=" * 60)
+
+    # Layout generale
+    fig.update_layout(
+        title="Errore Predizione NN vs Funzione Reale (Scala Signed-Log per Colore)",
+        height=400 * rows,
+        width=1400,
+        showlegend=False,
+    )
+
+    return fig
+
+
 def salva_grafico_interattivo(fig, nome_file="confronto_3d_epoche.html"):
     """Salva grafico 3D interattivo come file HTML.
 
@@ -569,6 +717,17 @@ def principale():
 
     # Salva grafico interattivo
     salva_grafico_interattivo(fig)
+
+    # Crea visualizzazione errori 3D con scala signed-log
+    fig_errori = crea_visualizzazione_errori_3d(
+        callback_salvataggio,
+        epoche_da_salvare,
+        unita_nascoste=unita_nascoste,
+        attivazione=attivazione,
+    )
+
+    # Salva grafico errori
+    salva_grafico_interattivo(fig_errori, "errori_3d_epoche.html")
 
 
 if __name__ == "__main__":
