@@ -25,11 +25,15 @@ This project implements a neural network to learn the Pythagorean theorem: f(a,b
 
 ### Training and Basic Usage
 ```bash
-python nn_pitagora.py              # Train model and generate visualizations
-python pitagora.py                  # Alternative training script
-manim -pql right_triangles.py       # Generate triangle demonstration
-manim -pqh animate_surface.py       # Generate 3D surface evolution
-manim -pql animate_weights.py       # Generate weight visualizations
+python nn_pitagora.py                          # Complete version (5000 samples, SGD, -5 to 5, Plotly 3D)
+python pitagora.py                             # Presentation version (2000 samples, Adam, 0-15, 250 epochs, weight table)
+python pitagora2.py                            # Interactive demo version (100 epochs, while loop)
+manim -pql visualizza_parametri.py VisualizzaParametri  # Parameter evolution animation (requires pitagora.py output)
+manim -pql right_triangles.py TriangoliRettangoli       # Triangle demonstration with epochs 0,1,10,75
+manim -pqh animate_surface.py SuperficieNNEvoluzioneSemplice  # 3D surface morphing
+manim -pql animate_weights.py PesiReteNeurale          # Network weights visualization
+manim -pql animate_weights.py HeatmapPesi              # Weight heatmaps
+manim -pql animate_weights.py CalcoloEsempio           # Step-by-step calculation
 ```
 
 ### Development Workflow
@@ -204,14 +208,15 @@ The `right_triangles.py` file contains a Manim scene that demonstrates neural ne
 ## File Organization
 
 ### Core Implementation Files
-- **`nn_pitagora.py`** - Main neural network implementation (Italian function names)
-- **`pitagora.py`** / **`pitagora2.py`** - Alternative training scripts
-- **`visualizza_parametri.py`** - Parameter visualization utilities
+- **`nn_pitagora.py`** - Complete neural network implementation with Manim functions (Italian function names, SGD optimizer, 10 neurons default, range -5 to 5)
+- **`pitagora.py`** - Presentation version (15 neurons, 250 epochs, Adam optimizer, range 0-15, print_model_weights function, saves all models)
+- **`pitagora2.py`** - Minimal educational version (15 neurons, 100 epochs, Adam optimizer, interactive while loop for demo)
+- **`visualizza_parametri.py`** - Manim animation showing parameter evolution across epochs (1-250)
 
 ### Manim Animation Files
-- **`right_triangles.py`** - Triangle demonstration with predictions
-- **`animate_weights.py`** - Weight visualization and network structure  
-- **`animate_surface.py`** - 3D surface evolution animation
+- **`right_triangles.py`** - Triangle demonstration scene (TriangoliRettangoli) showing NN predictions on Pythagorean triples across epochs 0,1,10,75 with error analysis and weight matrices visualization
+- **`animate_weights.py`** - Three scenes: PesiReteNeurale (network structure), HeatmapPesi (weight heatmaps), CalcoloEsempio (step-by-step calculation for input 1,2)
+- **`animate_surface.py`** - 3D surface evolution animation (SuperficieNNEvoluzioneSemplice) showing morphing from epoch 1 to 75 with blue target surface and color gradient red→green
 
 ### Generated Outputs
 - **`saved_models/`** - Complete Keras models for each epoch (model_epoch_XXX.keras)
@@ -233,12 +238,29 @@ The codebase uses Italian function names. When working with this code:
 - Both Italian and English pickle files may exist for backward compatibility
 
 ### Model Architecture Details
-- Default activation function: 'tanh' (configurable in `costruisci_modello()`)
-- Model architecture: 2 → N → 1 (input → hidden → output, default N=50)
-- Optimizer: SGD with configurable learning rate (default 0.001)
+
+**nn_pitagora.py (complete version)**:
+- Default: 2 → 10 → 1 with 'tanh' activation (configurable)
+- Optimizer: SGD with learning rate 0.001
 - Training range: a,b ∈ [-5, 5]
-- Target function: f(a,b) = √(a² + b²)
-- All epochs (0-250+) saved as complete models in `saved_models/`
+- Default epochs: 75
+- Saves epochs: [1, 3, 5, 10, 20, 30, 40, 50, 75]
+
+**pitagora.py (presentation version)**:
+- Fixed: 2 → 15 → 1 with 'relu' activation
+- Optimizer: Adam
+- Training range: a,b ∈ [0, 15]
+- Epochs: 250 (saves all epochs)
+- Includes print_model_weights() function for tabular output
+
+**pitagora2.py (demo version)**:
+- Fixed: 2 → 15 → 1 with 'relu' activation
+- Optimizer: Adam
+- Training range: a,b ∈ [0, 15]
+- Epochs: 100 (faster for demos)
+- Interactive while loop for user input
+
+Target function for all: f(a,b) = √(a² + b²)
 
 ### Model Architecture Extraction
 Manim scenes automatically extract network architecture from saved models:
